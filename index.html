@@ -1,21 +1,197 @@
 <!doctype html>
 <html lang="nl">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>BloFin Trade Dashboard V6 - Signal Quality</title>
-<style>
-:root{--bg:#07111f;--card:#111a2d;--card2:#18233a;--text:#eef4ff;--muted:#9fb0d8;--green:#23c26b;--red:#ff5c6c;--amber:#ffbf47;--blue:#60a5fa;--border:#2a365f;--purple:#a78bfa;--hot:#ff8a3d}*{box-sizing:border-box}body{margin:0;background:linear-gradient(180deg,#07111f,#10182d 45%,#0d1326);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}.wrap{max-width:1320px;margin:0 auto;padding:16px 14px 42px}h1{font-size:25px;margin:4px 0 8px}.sub{color:var(--muted);font-size:14px;line-height:1.5;max-width:980px}.toolbar,.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.toolbar{margin:12px 0}.grid{display:grid;gap:12px}.cards{grid-template-columns:repeat(5,1fr)}.card{background:rgba(17,26,45,.96);border:1px solid var(--border);border-radius:18px;padding:14px;box-shadow:0 12px 34px rgba(0,0,0,.25)}.kpi{font-size:12px;color:var(--muted);margin-bottom:6px}.v{font-size:21px;font-weight:900}button,select{appearance:none;border-radius:12px;border:1px solid var(--border);background:var(--card2);color:var(--text);padding:12px 14px;font-size:15px}button{font-weight:800;cursor:pointer}.primary{background:#1d4ed8;border-color:#2563eb}.safe{background:#064e3b;border-color:#047857}.pill{display:inline-flex;border:1px solid var(--border);background:#101a2c;color:var(--muted);padding:8px 10px;border-radius:999px;font-size:12px}.panes{display:grid;grid-template-columns:1.45fr .8fr;gap:12px}.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}.three{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.small,.status,.muted{font-size:12px;color:var(--muted);line-height:1.45}.section-title{font-size:18px;margin:0 0 8px}table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;padding:10px 8px;border-bottom:1px solid rgba(159,176,216,.13);vertical-align:top}th{font-size:11px;text-transform:uppercase;color:var(--muted);white-space:nowrap}.badge{display:inline-block;padding:4px 8px;border-radius:999px;font-size:12px;font-weight:800;white-space:nowrap}.long{background:rgba(35,194,107,.14);color:#77f0a8}.short{background:rgba(255,92,108,.14);color:#ff95a1}.high{background:rgba(255,138,61,.18);color:#ffb27a}.watch{background:rgba(167,139,250,.18);color:#cab8ff}.skip{background:rgba(159,176,216,.12);color:#b8c6e8}.momo{background:rgba(96,165,250,.15);color:#a9d0ff}.rev{background:rgba(255,191,71,.14);color:#ffd889}.risk{background:rgba(255,92,108,.14);color:#ff95a1}.quality{background:rgba(35,194,107,.14);color:#77f0a8}.good{color:var(--green)}.neg{color:var(--red)}.clickrow{cursor:pointer}.clickrow:hover,.selected{background:rgba(96,165,250,.07)}.ticket-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:10px}.box{background:#0f182b;border:1px solid var(--border);border-radius:14px;padding:10px}.label{font-size:11px;color:var(--muted);margin-bottom:4px}.val{font-size:18px;font-weight:900}.bar{height:8px;background:#0d1326;border:1px solid rgba(159,176,216,.12);border-radius:99px;overflow:hidden;margin:4px 0 8px}.fill{height:100%;background:linear-gradient(90deg,#60a5fa,#a78bfa)}.notice{border:1px solid rgba(255,191,71,.25);background:rgba(255,191,71,.08);color:#ffd889;border-radius:14px;padding:12px;font-size:12px;line-height:1.45;margin-top:10px}@media(max-width:1100px){.cards{grid-template-columns:repeat(2,1fr)}.panes,.two,.three{grid-template-columns:1fr}}@media(max-width:680px){.cards,.ticket-grid{grid-template-columns:1fr 1fr}th:nth-child(10),td:nth-child(10){display:none}}
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#050c10">
+  <meta name="description" content="Onafhankelijk Bybit EU Spot Margin signalendashboard voor acht liquide USDC-markten.">
+  <title>Bybit EU Signal Desk</title>
+  <link rel="stylesheet" href="./styles.css">
 </head>
-<body><div class="wrap">
-<h1>BloFin Trade Dashboard V6</h1><p class="sub">V6 = betere signal-quality scanner. Deze versie gebruikt 1h/24h/7d momentum, splitst momentum en reversal, maakt leverage conservatiever en toont waarom een coin een setup is. Geen automatische tradingbot en geen financieel advies.</p>
-<div class="toolbar"><button class="primary" id="refreshBtn">Refresh CoinGecko data</button><button id="useLastBtn">Gebruik snapshot</button><button class="safe" id="validateBtn">Valideer top met OHLC</button><select id="riskMode"><option value="balanced">Balanced</option><option value="aggressive">Aggressive</option><option value="degenerate">Degenerate</option></select><select id="pageCount"><option value="3">± 300 coins</option><option value="2">± 200 coins</option><option value="1">± 100 coins</option></select><select id="countSelect"><option value="10">Top 10</option><option value="15">Top 15</option><option value="6">Top 6</option></select><select id="sortBias"><option value="all">Long + Short</option><option value="long">Alleen Long</option><option value="short">Alleen Short</option></select><select id="strategyFilter"><option value="all">Momentum + Reversal</option><option value="momentum">Alleen Momentum</option><option value="reversal">Alleen Reversal</option></select><select id="tradeMargin"><option value="10">$10 per trade</option><option value="8">$8 per trade</option><option value="12">$12 per trade</option><option value="15">$15 per trade</option></select></div>
-<div class="grid cards"><div class="card"><div class="kpi">Status</div><div class="v" id="statusHead">Nog niet geladen</div><div class="status" id="statusText">Tik op Refresh.</div></div><div class="card"><div class="kpi">Laatste update</div><div class="v" id="updatedAt">—</div><div class="status">Live of snapshot</div></div><div class="card"><div class="kpi">Coins gescand</div><div class="v" id="scanned">0</div><div class="status">CoinGecko markets</div></div><div class="card"><div class="kpi">BTC regime</div><div class="v" id="btcRegime">—</div><div class="status" id="btcText">BTC 1h/24h/7d</div></div><div class="card"><div class="kpi">Trade margin</div><div class="v" id="marginHead">$10</div><div class="status">Max lev: 5x / 10x / 15x</div></div></div>
-<div class="card" style="margin-top:12px"><div class="row"><span class="pill">Bron: CoinGecko</span><span class="pill">Timeframes: 1h / 24h / 7d</span><span class="pill">Output: HIGH SETUP / WATCH / SKIP</span><span class="pill">OHLC-validatie op topselectie</span></div></div>
-<div class="three" style="margin-top:12px"><div class="card"><h2 class="section-title">Indicatoren</h2><div class="muted">1h/24h/7d momentum, volume, market cap-rank, market cap-risico, liquidity penalty, BTC-regime en optionele OHLC-range.</div></div><div class="card"><h2 class="section-title">Verbetering t.o.v. V5</h2><div class="muted">V5 keek vooral naar 24h beweging. V6 kijkt of korte en langere beweging elkaar bevestigen of juist op reversal wijzen.</div></div><div class="card"><h2 class="section-title">Risico-rem</h2><div class="muted">Leverage is bewust lager. Degenerate blijft mogelijk, maar niet meer met 35x voorstellen.</div></div></div>
-<div class="panes" style="margin-top:12px"><div class="card"><h2 class="section-title">Top setups</h2><div style="overflow:auto"><table><thead><tr><th>#</th><th>Coin</th><th>Type</th><th>Bias</th><th>Signal</th><th>Score</th><th>Conf.</th><th>1h</th><th>24h</th><th>7d</th><th>Vol</th><th>Lev</th><th>OHLC</th><th>Waarom</th></tr></thead><tbody id="tbody"><tr><td colspan="14" class="small">Nog geen data.</td></tr></tbody></table></div></div><div class="card"><h2 class="section-title">Trade ticket</h2><div class="muted">Klik links op een setup. Dit is een invulhulp, geen opdracht om te traden.</div><div id="ticketEmpty" class="small" style="margin-top:14px">Nog geen coin geselecteerd.</div><div id="ticketWrap" style="display:none"><div class="box"><div class="row" style="justify-content:space-between"><div><div class="label">Coin</div><div class="val" id="ticketSymbol">—</div></div><div><span class="badge" id="ticketBias">—</span> <span class="badge" id="ticketSignal">—</span></div></div><div class="small" id="ticketWhy" style="margin-top:8px">—</div></div><div class="ticket-grid"><div class="box"><div class="label">Setup-type</div><div class="val" id="ticketType">—</div><div class="small" id="ticketTypeNote">—</div></div><div class="box"><div class="label">Leverage</div><div class="val" id="ticketLev">—</div><div class="small" id="ticketLevNote">—</div></div><div class="box"><div class="label">Margin</div><div class="val" id="ticketMargin">—</div></div><div class="box"><div class="label">Exposure</div><div class="val" id="ticketExposure">—</div></div><div class="box"><div class="label">Entry</div><div class="val" id="ticketEntry">—</div></div><div class="box"><div class="label">SL</div><div class="val" id="ticketSL">—</div><div class="small" id="ticketRiskUsd">—</div></div><div class="box"><div class="label">TP</div><div class="val" id="ticketTP">—</div><div class="small" id="ticketRewardUsd">—</div></div><div class="box"><div class="label">R/R</div><div class="val" id="ticketRR">—</div><div class="small" id="ticketRiskText">—</div></div></div><div class="two" style="margin-top:10px"><div class="box"><div class="label">Score-opbouw</div><div id="scoreBreakdown"></div></div><div class="box"><div class="label">Checklist</div><div class="small" id="ticketChecklist"></div></div></div><div class="notice">Controleer altijd zelf op BloFin: bestaat de markt, spread, funding, orderboek en chartstructuur. Bij twijfel geen trade.</div></div></div></div>
-<div class="two" style="margin-top:12px"><div class="card"><h2 class="section-title">Risk movers</h2><div style="overflow:auto"><table><thead><tr><th>#</th><th>Coin</th><th>1h</th><th>24h</th><th>7d</th><th>Risk</th><th>Notitie</th></tr></thead><tbody id="riskBody"><tr><td colspan="7" class="small">Nog geen data.</td></tr></tbody></table></div></div><div class="card"><h2 class="section-title">Diagnostiek</h2><div class="small" id="diag">Nog geen poging gedaan.</div><div class="notice">OHLC-validatie wordt alleen op de topselectie gedaan om rate limits te beperken.</div></div></div></div>
-<script>
-const SNAP='blofin_cg_snapshot_v6',state={data:[],filtered:[],ohlc:{},source:null};const $=id=>document.getElementById(id);function fmt(n,d=2){return n==null||isNaN(n)?'—':Number(n).toLocaleString('nl-NL',{maximumFractionDigits:d,minimumFractionDigits:d})}function compact(n){return n==null||isNaN(n)?'—':Number(n).toLocaleString('en',{notation:'compact',maximumFractionDigits:1})}function clamp(v,a,b){return Math.max(a,Math.min(b,v))}function pos(v,m){return clamp((+v||0)/m*100,0,100)}function neg(v,m){return clamp(-(+v||0)/m*100,0,100)}function absS(v,m){return clamp(Math.abs(+v||0)/m*100,0,100)}function chg(r,t){if(t==='1h')return +(r.price_change_percentage_1h_in_currency??0);if(t==='24h')return +(r.price_change_percentage_24h_in_currency??r.price_change_percentage_24h??0);if(t==='7d')return +(r.price_change_percentage_7d_in_currency??0);return 0}function setStatus(h,t,c=''){$('statusHead').textContent=h;$('statusText').innerHTML=t;$('statusText').className='status '+c}function margin(){return +$('tradeMargin').value}function params(){let m=$('riskMode').value;if(m==='balanced')return{base:2,max:5,min:1,sl:.026,rr:1.35,label:'Balanced'};if(m==='degenerate')return{base:5,max:15,min:2,sl:.038,rr:1.75,label:'Degenerate'};return{base:3,max:10,min:1,sl:.032,rr:1.55,label:'Aggressive'}}function signal(score,q,r){if(score>=80&&q>=62&&r<82)return{label:'HIGH SETUP',cls:'high'};if(score>=66&&q>=45)return{label:'WATCH',cls:'watch'};return{label:'SKIP',cls:'skip'}}function conf(score,q,r){if(score>=82&&q>=70&&r<70)return'Hoog';if(score>=70&&q>=52&&r<82)return'Middel';return'Laag'}function setupName(t){return{momentumLong:'Momentum long',momentumShort:'Momentum short',reversalLong:'Reversal long',reversalShort:'Reversal short'}[t]||'Geen'}function strat(t){return t.includes('momentum')?'momentum':'reversal'}function regime(rows){let b=rows.find(r=>(r.id||'')==='bitcoin'||(r.symbol||'').toLowerCase()==='btc');if(!b)return{label:'Onbekend',bias:'neutral',note:'BTC niet gevonden'};let c1=chg(b,'1h'),c24=chg(b,'24h'),c7=chg(b,'7d'),note=`BTC ${fmt(c1)}% 1h / ${fmt(c24)}% 24h / ${fmt(c7)}% 7d`;if(c24>1.5&&c7>3)return{label:'Risk-on',bias:'long',note};if(c24<-1.5&&c7<-3)return{label:'Risk-off',bias:'short',note};return{label:'Gemengd',bias:'neutral',note}}function filterRows(rows){return rows.filter(r=>{let price=+r.current_price||0,vol=+r.total_volume||0,move=Math.max(Math.abs(chg(r,'1h')),Math.abs(chg(r,'24h')),Math.abs(chg(r,'7d'))/3);return price>0&&vol>=900000&&move>=.8})}function analyze(rows){let reg=regime(rows);$('btcRegime').textContent=reg.label;$('btcText').textContent=reg.note;let p=params();return rows.map(r=>{let price=+r.current_price||0,c1=chg(r,'1h'),c24=chg(r,'24h'),c7=chg(r,'7d'),vol=+r.total_volume||0,rank=+r.market_cap_rank||999,mc=+r.market_cap||0,sym=(r.symbol||'').toUpperCase(),id=r.id;let volS=clamp((Math.log10(vol+1)-5.7)*20,0,100),rankS=clamp((260-rank)/2.6,0,100),small=clamp((rank-60)/2.2,0,45),lowCap=100-clamp((Math.log10(mc+1)-7)*18,0,100),m1=absS(c1,4.5),m24=absS(c24,16),liq=vol<1500000?24:vol<5000000?12:0,pump=Math.abs(c24)>35?12:Math.abs(c24)>24?6:0,la=reg.bias==='long'?5:reg.bias==='short'?-5:0,sa=reg.bias==='short'?5:reg.bias==='long'?-5:0;let momentumLong=clamp(.30*pos(c1,4.5)+.28*pos(c24,16)+.14*pos(c7,35)+.18*volS+.10*rankS+la-liq-pump,0,100),momentumShort=clamp(.30*neg(c1,4.5)+.28*neg(c24,16)+.14*neg(c7,35)+.18*volS+.10*rankS+sa-liq-pump,0,100);let rl=(c24<=-7&&c1>0)||(c7<=-12&&c1>.8),rs=(c24>=7&&c1<0)||(c7>=18&&c1<-.8);let reversalLong=clamp((rl?32:0)+.18*neg(c24,18)+.20*pos(c1,3)+.14*volS+.08*rankS+la-liq,0,100),reversalShort=clamp((rs?32:0)+.18*pos(c24,18)+.20*neg(c1,3)+.14*volS+.08*rankS+sa-liq,0,100);let scores={momentumLong,momentumShort,reversalLong,reversalShort},type=Object.entries(scores).sort((a,b)=>b[1]-a[1])[0][0],bias=type.endsWith('Long')?'LONG':'SHORT',score=scores[type],quality=clamp(.34*volS+.22*rankS+.20*Math.max(m1,m24)+.12*(100-pump*5)+.12*(vol>=5000000?100:55),0,100),risk=clamp(.34*m24+.22*m1+.20*small+.14*lowCap+.10*(vol<5000000?80:35),0,100),sig=signal(score,quality,risk);let volProxy=clamp(.010+Math.abs(c1)/100*.55+Math.abs(c24)/100*.10,.018,.075),slPct=clamp(p.sl+volProxy+(risk>75?.008:0),.020,.095),rrv=clamp(p.rr+(score-66)/75-(risk>80?.15:0),1.18,2.05),tpPct=slPct*rrv,lev=Math.round(clamp(p.base+(score-66)/10+(quality-55)/35-risk/45,p.min,p.max));let entry=price,sl=bias==='LONG'?price*(1-slPct):price*(1+slPct),tp=bias==='LONG'?price*(1+tpPct):price*(1-tpPct),o=state.ohlc[id]||{label:'—',cls:'skip',note:'nog niet gevalideerd'};return{id,sym,price,c1,c24,c7,vol,rank,volS,rankS,scores,type,strategy:strat(type),setup:setupName(type),bias,score,quality,risk,signal:sig,confidence:conf(score,quality,risk),lev,entry,sl,tp,rr:rrv,ohlc:o,regime:reg,liq,pump}})}function reason(s){let a=[];if(s.strategy==='momentum')a.push('timeframes bevestigen');if(s.strategy==='reversal')a.push('mogelijke draai');if(Math.abs(s.c1)>=2)a.push('sterke 1h move');if(Math.abs(s.c24)>=8)a.push('sterke 24h move');if(s.volS>=70)a.push('hoog volume');if(s.rank>120)a.push('small-cap risico');if(s.liq>0)a.push('liquiditeitsstraf');return a.slice(0,4).join(', ')||'basisfilters ok'}function riskText(s){if(s.risk>=85)return'zeer wild / alleen kleine inzet';if(s.risk>=72)return'hoog risico';if(s.risk>=55)return'gemiddeld risico';return'relatief rustiger'}function sortSlice(en){let b=$('sortBias').value,s=$('strategyFilter').value;let f=en;if(b==='long')f=f.filter(x=>x.bias==='LONG');if(b==='short')f=f.filter(x=>x.bias==='SHORT');if(s!=='all')f=f.filter(x=>x.strategy===s);f=f.sort((a,b)=>(b.score+b.quality*.12-b.risk*.05)-(a.score+a.quality*.12-a.risk*.05));state.filtered=f;return f.slice(0,+$('countSelect').value)}function rr(s){return Math.abs(s.tp-s.entry)/Math.max(Math.abs(s.entry-s.sl),1e-9)}function usdRisk(s){return margin()*s.lev*(Math.abs(s.entry-s.sl)/s.entry)}function usdReward(s){return margin()*s.lev*(Math.abs(s.tp-s.entry)/s.entry)}function bar(l,v){return `<div class="small">${l}: <b>${fmt(v,0)}</b><div class="bar"><div class="fill" style="width:${clamp(v,0,100)}%"></div></div></div>`}function ticket(s){$('ticketEmpty').style.display='none';$('ticketWrap').style.display='block';$('marginHead').textContent='$'+margin();$('ticketSymbol').textContent=s.sym;$('ticketBias').textContent=s.bias;$('ticketBias').className='badge '+(s.bias==='LONG'?'long':'short');$('ticketSignal').textContent=s.signal.label;$('ticketSignal').className='badge '+s.signal.cls;$('ticketWhy').textContent=reason(s)+' • OHLC: '+s.ohlc.note;$('ticketType').textContent=s.setup;$('ticketTypeNote').textContent=s.strategy==='momentum'?'Trend-follow setup. Niet blind chasen.':'Mean-reversion setup. Alleen sterker bij duidelijke draai.';$('ticketLev').textContent=s.lev+'x';$('ticketLevNote').textContent=params().label+' • '+riskText(s);$('ticketMargin').textContent='$'+fmt(margin(),0);$('ticketExposure').textContent='$'+fmt(margin()*s.lev,0);$('ticketEntry').textContent='$'+fmt(s.entry,s.entry<1?6:2);$('ticketSL').textContent='$'+fmt(s.sl,s.sl<1?6:2);$('ticketTP').textContent='$'+fmt(s.tp,s.tp<1?6:2);$('ticketRiskUsd').textContent='Geschat verlies: ~$'+fmt(usdRisk(s));$('ticketRewardUsd').textContent='Geschatte winst: ~$'+fmt(usdReward(s));$('ticketRR').textContent=fmt(rr(s))+'R';$('ticketRiskText').textContent='Risk score '+fmt(s.risk,0)+' • '+riskText(s);$('scoreBreakdown').innerHTML=[bar('Momentum long',s.scores.momentumLong),bar('Momentum short',s.scores.momentumShort),bar('Reversal long',s.scores.reversalLong),bar('Reversal short',s.scores.reversalShort),bar('Kwaliteit',s.quality),bar('Risico',s.risk)].join('');$('ticketChecklist').innerHTML=`1. Zoek <b>${s.sym}-USDT</b> op BloFin.<br>2. Check of de markt bestaat en liquide is.<br>3. Richting: <b>${s.bias.toLowerCase()}</b>.<br>4. Max rond <b>${s.lev}x</b> volgens scanner.<br>5. Check spread, funding, orderboek en chart.<br>6. Bij twijfel geen trade.`}function render(rows,source){state.data=rows;state.source=source;$('scanned').textContent=rows.length;$('updatedAt').textContent=new Date().toLocaleString('nl-NL');$('marginHead').textContent='$'+margin();let en=analyze(filterRows(rows)),top=sortSlice(en);$('tbody').innerHTML='';if(!top.length)$('tbody').innerHTML='<tr><td colspan="14" class="small">Geen setups gevonden.</td></tr>';top.forEach((s,i)=>{let tr=document.createElement('tr');tr.className='clickrow';tr.innerHTML=`<td>${i+1}</td><td><b>${s.sym}</b><div class="small">rank ${s.rank}</div></td><td><span class="badge ${s.strategy==='momentum'?'momo':'rev'}">${s.setup}</span></td><td><span class="badge ${s.bias==='LONG'?'long':'short'}">${s.bias}</span></td><td><span class="badge ${s.signal.cls}">${s.signal.label}</span></td><td class="${s.score>=78?'good':''}">${fmt(s.score,0)}</td><td>${s.confidence}</td><td class="${s.c1>=0?'good':'neg'}">${fmt(s.c1)}%</td><td class="${s.c24>=0?'good':'neg'}">${fmt(s.c24)}%</td><td class="${s.c7>=0?'good':'neg'}">${fmt(s.c7)}%</td><td>$${compact(s.vol)}</td><td>${s.lev}x</td><td><span class="badge ${s.ohlc.cls}">${s.ohlc.label}</span></td><td>${reason(s)}</td>`;tr.onclick=()=>{document.querySelectorAll('.clickrow').forEach(x=>x.classList.remove('selected'));tr.classList.add('selected');ticket(s)};$('tbody').appendChild(tr)});let risk=en.filter(x=>x.risk>=58).sort((a,b)=>b.risk-a.risk).slice(0,8);$('riskBody').innerHTML='';risk.forEach((d,i)=>{let tr=document.createElement('tr');tr.innerHTML=`<td>${i+1}</td><td><b>${d.sym}</b></td><td class="${d.c1>=0?'good':'neg'}">${fmt(d.c1)}%</td><td class="${d.c24>=0?'good':'neg'}">${fmt(d.c24)}%</td><td class="${d.c7>=0?'good':'neg'}">${fmt(d.c7)}%</td><td><span class="badge risk">${fmt(d.risk,0)}</span></td><td>${riskText(d)}</td>`;$('riskBody').appendChild(tr)});$('diag').innerHTML=`Bron: <b>${source}</b>. Ingeladen: ${rows.length}. Na filter: ${en.length}.`;setStatus(source==='live'?'Live data geladen':'Snapshot geladen',source==='live'?'Data binnen. Klik een setup of valideer top met OHLC.':'Snapshot geladen. Refresh voor actuele data.',source==='live'?'ok':'warn');if(top.length)setTimeout(()=>document.querySelector('.clickrow')?.click(),0)}async function fetchPage(p){let url=`https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=${p}&sparkline=false&price_change_percentage=1h,24h,7d`,c=new AbortController(),t=setTimeout(()=>c.abort(),14000);try{let r=await fetch(url,{headers:{accept:'application/json'},signal:c.signal});clearTimeout(t);if(!r.ok)throw Error('HTTP '+r.status+' pagina '+p);let d=await r.json();if(!Array.isArray(d)||!d.length)throw Error('Lege response pagina '+p);return d}finally{clearTimeout(t)}}async function live(){let pages=Array.from({length:+$('pageCount').value},(_,i)=>i+1),parts=await Promise.all(pages.map(fetchPage)),out=[],seen=new Set();parts.flat().forEach(r=>{if(r?.id&&!seen.has(r.id)){seen.add(r.id);out.push(r)}});localStorage.setItem(SNAP,JSON.stringify({ts:Date.now(),data:out}));return{source:'live',data:out}}function snap(){let raw=localStorage.getItem(SNAP);if(!raw)throw Error('Geen V6 snapshot gevonden');let p=JSON.parse(raw);if(!p?.data?.length)throw Error('Snapshot leeg');return{source:'snapshot',data:p.data}}async function refresh(){setStatus('Bezig','CoinGecko data ophalen met 1h/24h/7d...');try{let r=await live();render(r.data,r.source)}catch(e){try{let s=snap();render(s.data,'snapshot');$('diag').innerHTML=`Live fout: <b>${e.message}</b>. Snapshot geladen.`}catch(e2){$('tbody').innerHTML='<tr><td colspan="14" class="small">Geen live data en geen snapshot.</td></tr>';setStatus('Geen data',`Live fout: ${e.message}. Snapshot fout: ${e2.message}`,'bad')}}}async function fetchOHLC(id){let r=await fetch(`https://api.coingecko.com/api/v3/coins/${encodeURIComponent(id)}/ohlc?vs_currency=usd&days=1`,{headers:{accept:'application/json'}});if(!r.ok)throw Error('OHLC '+id+' HTTP '+r.status);let d=await r.json();if(!Array.isArray(d)||d.length<2)throw Error('te weinig OHLC');return d}function valOHLC(s,o){let c=o.map(x=>+x[4]).filter(Boolean),h=o.map(x=>+x[2]).filter(Boolean),l=o.map(x=>+x[3]).filter(Boolean),last=c.at(-1),prev=c.at(-2)||last,hi=Math.max(...h),lo=Math.min(...l),posi=(last-lo)/Math.max(hi-lo,1e-12),note='positie dagrange '+fmt(posi*100,0)+'%';let label='NEUTRAL',cls='watch';if(s.bias==='LONG'){if(s.strategy==='momentum'&&posi>.55&&last>=prev){label='CONFIRM';cls='quality'}else if(s.strategy==='reversal'&&posi<.45&&last>=prev){label='EARLY';cls='watch'}else{label='CAUTION';cls='risk'}if(posi>.93){label='HOT';cls='risk';note='dicht bij dag-high • '+note}}else{if(s.strategy==='momentum'&&posi<.45&&last<=prev){label='CONFIRM';cls='quality'}else if(s.strategy==='reversal'&&posi>.55&&last<=prev){label='EARLY';cls='watch'}else{label='CAUTION';cls='risk'}if(posi<.07){label='HOT';cls='risk';note='dicht bij dag-low • '+note}}return{label,cls,note}}async function validateTop(){if(!state.filtered.length){setStatus('Geen setups','Laad eerst data.','warn');return}setStatus('OHLC','Topselectie valideren...','warn');let top=state.filtered.slice(0,+$('countSelect').value),ok=0,fail=0;for(let s of top){try{state.ohlc[s.id]=valOHLC(s,await fetchOHLC(s.id));ok++;await new Promise(r=>setTimeout(r,250))}catch(e){state.ohlc[s.id]={label:'FAIL',cls:'skip',note:e.message};fail++}}render(state.data,state.source||'snapshot');setStatus('OHLC klaar',`${ok} gelukt, ${fail} mislukt.`,fail?'warn':'ok')}['riskMode','countSelect','sortBias','strategyFilter','tradeMargin'].forEach(id=>$(id).onchange=()=>state.data.length?render(state.data,state.source||'snapshot'):$('marginHead').textContent='$'+margin());$('refreshBtn').onclick=refresh;$('validateBtn').onclick=validateTop;$('useLastBtn').onclick=()=>{try{let s=snap();render(s.data,'snapshot')}catch(e){setStatus('Geen snapshot',e.message,'bad')}};window.onload=()=>{$('marginHead').textContent='$'+margin();try{let s=snap();render(s.data,'snapshot')}catch(e){}}
-</script></body></html>
+<body>
+  <div class="app-shell" id="scannerView">
+    <header class="topbar">
+      <div class="brand-block">
+        <h1>Bybit EU Signal Desk</h1>
+        <p>Onafhankelijk dashboard <span aria-hidden="true">·</span> Alleen signalen</p>
+      </div>
+      <div class="topbar-actions">
+        <div class="connection connection-loading" id="connectionStatus" role="status">
+          <span class="connection-dot"></span>
+          <span id="connectionLabel">VERBINDEN</span>
+        </div>
+        <span class="data-source">Bybit EU data</span>
+        <span class="last-update">Laatst bijgewerkt: <time id="lastUpdated">—</time></span>
+        <button class="icon-button" id="refreshButton" type="button" aria-label="Marktdata vernieuwen" title="Vernieuwen">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.34 5.66M20 4v7h-7"/></svg>
+        </button>
+        <button class="icon-button" id="settingsButton" type="button" aria-label="Instellingen openen" title="Instellingen">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V21h-4v-.08A1.7 1.7 0 0 0 8.96 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.56-1.03H3v-4h.08A1.7 1.7 0 0 0 4.6 8.96a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 8.96 4.6 1.7 1.7 0 0 0 10 3.08V3h4v.08a1.7 1.7 0 0 0 1.03 1.56 1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06a1.7 1.7 0 0 0-.34 1.88A1.7 1.7 0 0 0 20.92 10H21v4h-.08A1.7 1.7 0 0 0 19.4 15Z"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <section class="market-strip" aria-label="Marktoverzicht">
+      <div class="market-stat">
+        <span>Marktregime</span>
+        <strong id="marketRegime">Data laden…</strong>
+      </div>
+      <div class="market-stat">
+        <span>Beste setup</span>
+        <strong id="bestSetup">—</strong>
+      </div>
+      <div class="market-stat">
+        <span>Actieve signalen</span>
+        <strong id="activeSignals">0 van 8</strong>
+      </div>
+      <div class="market-stat">
+        <span>Datakwaliteit</span>
+        <strong id="dataQuality">Controleren…</strong>
+      </div>
+    </section>
+
+    <div class="alert-banner" id="alertBanner" role="alert" hidden></div>
+
+    <main class="dashboard-grid">
+      <aside class="watchlist-panel panel" aria-labelledby="watchlistTitle">
+        <div class="panel-heading compact-heading">
+          <h2 id="watchlistTitle">Watchlist <span>(8)</span></h2>
+        </div>
+        <div class="watchlist-columns" aria-hidden="true">
+          <span>Pair</span><span>Prijs (USDC)</span><span>24u %</span><span>1u</span>
+        </div>
+        <div class="watchlist" id="watchlist" role="list" aria-live="polite"></div>
+        <div class="signal-legend">
+          <p>1u signaal (gesloten candle)</p>
+          <div><span><i class="legend-dot long-dot"></i>Groen = LONG</span><span><i class="legend-dot short-dot"></i>Rood = SHORT</span></div>
+          <div><span><i class="legend-dot watch-dot"></i>Geel = WATCH</span><span><i class="legend-dot none-dot"></i>Grijs = GEEN TRADE</span></div>
+        </div>
+      </aside>
+
+      <section class="chart-panel panel" id="chartView" aria-labelledby="selectedPair">
+        <div class="chart-titlebar">
+          <div>
+            <h2 id="selectedPair">BTC/USDC</h2>
+            <div class="mobile-price-line"><strong id="mobilePrice">—</strong><span id="mobileChange">—</span></div>
+          </div>
+          <div class="mobile-signal-summary">
+            <strong id="mobileStatus">—</strong>
+            <span>Score <b id="mobileScore">—</b> / 100</span>
+          </div>
+        </div>
+        <div class="chart-toolbar">
+          <div class="timeframe-tabs" role="tablist" aria-label="Grafiektijdframe">
+            <button type="button" class="timeframe-tab active" data-interval="60" role="tab" aria-selected="true">1u</button>
+            <button type="button" class="timeframe-tab" data-interval="240" role="tab" aria-selected="false">4u</button>
+            <button type="button" class="timeframe-tab" data-interval="D" role="tab" aria-selected="false">1d</button>
+          </div>
+          <div class="chart-tools" aria-label="Grafiekinformatie">
+            <span>Gesloten candles</span>
+            <span class="ema-label ema-blue">EMA 20 <b id="ema20Value">—</b></span>
+            <span class="ema-label ema-amber">EMA 50 <b id="ema50Value">—</b></span>
+          </div>
+        </div>
+        <div class="chart-canvas-wrap">
+          <canvas id="signalChart" aria-label="Candlestickgrafiek met EMA 20, EMA 50, volume en tradeplan"></canvas>
+        </div>
+        <div class="chart-footer">
+          <div class="timeframe-tabs secondary-tabs" aria-hidden="true">
+            <span>5m</span><span>15m</span><strong>1u</strong><span>4u</span><span>1d</span>
+          </div>
+          <span id="chartTimestamp">Alleen bevestigde data</span>
+        </div>
+      </section>
+
+      <aside class="analysis-panel panel" aria-labelledby="signalStatus">
+        <div class="score-block">
+          <h2 id="signalStatus">WACHTEN</h2>
+          <span>Score</span>
+          <strong><b id="signalScore">—</b> <small>/ 100</small></strong>
+        </div>
+        <div class="consensus" id="consensus"></div>
+        <div class="trade-plan" id="tradePlan">
+          <h3>Tradeplan (1u)</h3>
+          <p class="empty-copy">Selecteer een markt en wacht op voldoende gesloten candles.</p>
+        </div>
+        <div class="signal-reasons">
+          <h3>Waarom dit signaal?</h3>
+          <ul id="signalReasons"><li>Marktdata wordt geladen</li></ul>
+        </div>
+      </aside>
+
+      <section class="setups-panel panel" aria-labelledby="setupsTitle">
+        <div class="panel-heading setups-heading">
+          <h2 id="setupsTitle">Alle setups</h2>
+          <span>Alleen gesloten candles</span>
+        </div>
+        <div class="setups-table-wrap">
+          <table>
+            <thead><tr><th>Pair</th><th>1u (gesloten)</th><th>4u (gesloten)</th><th>1d (gesloten)</th><th>Score</th><th>Setup</th><th>Spread</th><th>Status</th></tr></thead>
+            <tbody id="setupsTable"></tbody>
+          </table>
+        </div>
+        <div class="mobile-setups" id="mobileSetups"></div>
+      </section>
+    </main>
+
+    <footer class="risk-footer">
+      <div><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 21h20L12 3Z"/><path d="M12 9v5M12 18h.01"/></svg><span>Signalen zijn technische marktinformatie, geen financieel advies. Controleer altijd zelf vóór een trade.</span></div>
+      <div><span>Let op: leenbaarheid verschilt per account. Controleer dit in Bybit EU.</span><i class="connection-dot"></i><b id="footerConnection">LIVE</b></div>
+    </footer>
+  </div>
+
+  <nav class="mobile-nav" aria-label="Mobiele navigatie">
+    <button type="button" class="active" data-mobile-target="scannerView">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 7v5l4 2"/></svg><span>Scanner</span>
+    </button>
+    <button type="button" data-mobile-target="chartView">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3v18M18 3v18M3 8h6M15 16h6M9 5v6M15 13v6"/></svg><span>Chart</span>
+    </button>
+    <button type="button" id="mobileInfoButton">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5A3.5 3.5 0 0 1 7.5 2H12v18H7.5A3.5 3.5 0 0 0 4 23V5.5ZM20 5.5A3.5 3.5 0 0 0 16.5 2H12v18h4.5A3.5 3.5 0 0 1 20 23V5.5Z"/></svg><span>Uitleg</span>
+    </button>
+  </nav>
+
+  <dialog id="settingsDialog" class="modal-dialog">
+    <form method="dialog">
+      <div class="dialog-heading"><div><h2>Instellingen</h2><p>Alleen lokale, niet-gevoelige voorkeuren.</p></div><button class="icon-button" value="cancel" aria-label="Sluiten">×</button></div>
+      <label for="maxLeverage">Maximale leverage</label>
+      <select id="maxLeverage">
+        <option value="2">2x</option><option value="3">3x</option><option value="4">4x</option><option value="5">5x</option>
+        <option value="6">6x</option><option value="7">7x</option><option value="8">8x</option><option value="9">9x</option><option value="10">10x</option>
+      </select>
+      <p class="field-note">Het dashboard kan altijd een lager advies geven op basis van stopafstand en signaalkwaliteit.</p>
+      <button class="primary-button" id="saveSettings" value="default">Opslaan</button>
+      <button class="secondary-button settings-info-button" id="openInfoButton" type="button">Uitleg & 90d backtest</button>
+    </form>
+  </dialog>
+
+  <section class="info-drawer" id="infoDrawer" aria-labelledby="infoTitle" aria-hidden="true">
+    <div class="drawer-backdrop" data-close-drawer></div>
+    <div class="drawer-content">
+      <div class="dialog-heading">
+        <div><h2 id="infoTitle">Uitleg & validatie</h2><p>Transparante signalen, geen winstbelofte.</p></div>
+        <button class="icon-button" type="button" data-close-drawer aria-label="Uitleg sluiten">×</button>
+      </div>
+      <div class="explanation-block">
+        <h3>Hoe de score werkt</h3>
+        <p>De score combineert trend (40), momentum (30), volume (15) en volatiliteit/liquiditeit (15). Alleen een gesloten 1u-candle kan een signaal opleveren; 4u bevestigt en 1d mag niet sterk tegenspreken.</p>
+      </div>
+      <div class="explanation-block">
+        <h3>90 dagen backtest</h3>
+        <p>De test gebruikt steeds alleen data die op dat moment bekend was. Standaardkosten: 0,25% taker per zijde plus spread. Borrowing fees zijn niet inbegrepen.</p>
+        <button class="primary-button" id="runBacktest" type="button">Start backtest</button>
+        <button class="secondary-button" id="cancelBacktest" type="button" hidden>Stop test</button>
+        <div class="backtest-progress" id="backtestProgress" hidden><div><span id="backtestProgressBar"></span></div><p id="backtestProgressText">Voorbereiden…</p></div>
+        <div class="backtest-results" id="backtestResults"><p class="empty-copy">Nog geen test uitgevoerd.</p></div>
+      </div>
+      <div class="explanation-block warning-block">
+        <h3>Belangrijke beperking</h3>
+        <p>De publieke API toont of een markt margin ondersteunt, maar niet of jij de betreffende coin nu kunt lenen. Controleer leenbaarheid, kosten en risicomarge altijd in je eigen Bybit EU-account.</p>
+      </div>
+    </div>
+  </section>
+
+  <script type="module" src="./js/app.js"></script>
+</body>
+</html>
