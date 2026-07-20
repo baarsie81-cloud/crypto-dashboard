@@ -21,6 +21,7 @@ export const STORAGE_KEYS = Object.freeze({
   settings: "bybit-eu-signal-settings-v1",
   snapshot: "bybit-eu-market-cache-v1",
   backtest: "bybit-eu-backtest-v1",
+  tradeJournal: "bybit-eu-manual-trade-journal-v1",
 });
 
 export const SIGNAL_LIMITS = Object.freeze({
@@ -30,4 +31,11 @@ export const SIGNAL_LIMITS = Object.freeze({
   actionableSpreadPct: 0.15,
   maximumSpreadPct: 0.25,
   defaultMaxLeverage: 10,
+});
+
+export const TRADE_DEFAULTS = Object.freeze({
+  budgetUSDC: 20,
+  riskPct: 10,
+  feeRatePerSide: 0.0025,
+  cumulativeRiskWarningUSDC: 20,
 });

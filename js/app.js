@@ -1,9 +1,10 @@
-import { CORE_PAIRS, SIGNAL_LIMITS, STORAGE_KEYS, TIMEFRAMES } from "./constants.js";
+import { CORE_PAIRS, SIGNAL_LIMITS, STORAGE_KEYS, TIMEFRAMES, TRADE_DEFAULTS } from "./constants.js";
 import { BybitClient, loadSnapshot, saveSnapshot } from "./bybit.js";
 import { SignalChart } from "./chart.js";
 import { combineBacktests, runBacktest } from "./backtest.js";
 import { closedCandles } from "./indicators.js";
 import { analyzeMarket, rankTurnover } from "./signals.js";
+import { ManualTradeAssistant } from "./trade-assistant.js";
 
 const client = new BybitClient();
 const pairBySymbol = new Map(CORE_PAIRS.map((pair) => [pair.symbol, pair]));
@@ -19,7 +20,11 @@ const state = {
   source: "loading",
   connection: "connecting",
   loading: false,
-  settings: { maxLeverage: SIGNAL_LIMITS.defaultMaxLeverage },
+  settings: {
+    maxLeverage: SIGNAL_LIMITS.defaultMaxLeverage,
+    budgetUSDC: TRADE_DEFAULTS.budgetUSDC,
+    riskPct: TRADE_DEFAULTS.riskPct,
+  },
   backtestCancelled: false,
 };
 
@@ -40,6 +45,9 @@ function cacheElements() {
     "tradePlan", "signalReasons", "setupsTable", "mobileSetups", "footerConnection", "settingsDialog", "maxLeverage",
     "infoDrawer", "runBacktest", "cancelBacktest", "backtestProgress", "backtestProgressBar", "backtestProgressText",
     "backtestResults", "refreshButton", "settingsButton", "saveSettings", "mobileInfoButton", "openInfoButton",
+    "tradeBudget", "riskPercentage", "manualOrderContent", "journalRiskSummary", "openJournalButton",
+    "journalDialog", "closeJournalButton", "journalSummary", "journalWarning", "journalList", "exportJournalButton",
+    "importJournalButton", "journalImportFile",
   ].forEach((id) => { elements[id] = byId(id); });
 }
 
@@ -84,10 +92,16 @@ function loadSettings() {
     const parsed = JSON.parse(localStorage.getItem(STORAGE_KEYS.settings));
     const leverage = Number(parsed?.maxLeverage);
     if (leverage >= 2 && leverage <= 10) state.settings.maxLeverage = leverage;
+    const budget = Number(parsed?.budgetUSDC);
+    if (budget >= 1 && budget <= 100_000) state.settings.budgetUSDC = budget;
+    const riskPct = Number(parsed?.riskPct);
+    if (riskPct >= 0.1 && riskPct <= 100) state.settings.riskPct = riskPct;
   } catch {
     // Defaults remain active.
   }
   elements.maxLeverage.value = String(state.settings.maxLeverage);
+  elements.tradeBudget.value = String(state.settings.budgetUSDC);
+  elements.riskPercentage.value = String(state.settings.riskPct);
 }
 
 function applySnapshot(snapshot) {
@@ -359,6 +373,7 @@ function renderSelectedMarket() {
   const candles = closedCandles(state.candles[state.selectedSymbol]?.[state.interval] || [], TIMEFRAMES[state.interval].milliseconds, now);
   elements.chartTimestamp.textContent = candles.length ? `Laatste gesloten candle: ${new Date(candles.at(-1).start + TIMEFRAMES[state.interval].milliseconds).toLocaleString("nl-NL", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}` : "Candles laden…";
   chart.update(candles, signal, state.interval);
+  manualTradeAssistant?.render();
 }
 
 function renderSetups() {
@@ -500,6 +515,10 @@ function bindEvents() {
   elements.settingsButton.addEventListener("click", () => elements.settingsDialog.showModal());
   elements.saveSettings.addEventListener("click", () => {
     state.settings.maxLeverage = Number(elements.maxLeverage.value);
+    state.settings.budgetUSDC = Math.min(100_000, Math.max(1, Number(elements.tradeBudget.value) || TRADE_DEFAULTS.budgetUSDC));
+    state.settings.riskPct = Math.min(100, Math.max(0.1, Number(elements.riskPercentage.value) || TRADE_DEFAULTS.riskPct));
+    elements.tradeBudget.value = String(state.settings.budgetUSDC);
+    elements.riskPercentage.value = String(state.settings.riskPct);
     localStorage.setItem(STORAGE_KEYS.settings, JSON.stringify(state.settings));
     evaluateSignals();
     renderAll();
@@ -528,6 +547,18 @@ async function init() {
   cacheElements();
   loadSettings();
   chart = new SignalChart(elements.signalChart);
+  manualTradeAssistant = new ManualTradeAssistant({
+    elements,
+    getContext: () => ({
+      pair: pairBySymbol.get(state.selectedSymbol),
+      signal: state.signals.get(state.selectedSymbol),
+      instrument: state.instruments.get(state.selectedSymbol) || {},
+      budgetUSDC: state.settings.budgetUSDC,
+      riskPct: state.settings.riskPct,
+      maxLeverage: state.settings.maxLeverage,
+    }),
+    notify: setAlert,
+  });
   bindEvents();
   const snapshot = loadSnapshot();
   if (snapshot) applySnapshot(snapshot);
@@ -542,4 +573,5 @@ async function init() {
 }
 
 let chart;
+let manualTradeAssistant;
 init();
