@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { combineBacktests, evaluateTradeWindow } from "../js/backtest.js";
+import { combineBacktests, evaluateTradeWindow, runBacktest } from "../js/backtest.js";
 
 test("stop wint conservatief wanneer stop en target in dezelfde candle vallen", () => {
   const result = evaluateTradeWindow({
@@ -34,4 +34,23 @@ test("een lege backtest levert nulwaarden en geen fout op", () => {
   assert.equal(combined.summary.winRate, 0);
   assert.equal(combined.summary.profitFactor, 0);
   assert.equal(combined.summary.sufficientSample, false);
+});
+
+test("backtest beslist op een gesloten candle en stapt pas op de volgende 1u-candle in", () => {
+  const end = Date.UTC(2026, 6, 20);
+  const rising = (count, interval) => {
+    const first = end - count * interval;
+    return Array.from({ length: count }, (_, index) => {
+      const open = 100 + index * 0.25 + index ** 2 * 0.006;
+      const close = open + 0.45 + Math.sin(index / 4) * 0.08;
+      return { start: first + index * interval, open, high: close + 0.5, low: open - 0.35, close, volume: 1_000 + index * 12 };
+    });
+  };
+  const candlesByTimeframe = { "60": rising(260, 3_600_000), "240": rising(120, 14_400_000), D: rising(90, 86_400_000) };
+  const result = runBacktest({ symbol: "PF_XBTUSD", candlesByTimeframe, instrument: { tradeable: true, maxLeverage: 10 }, startAt: 0 });
+  assert.ok(result.trades.length > 0);
+  const first = result.trades[0];
+  const entryCandle = candlesByTimeframe["60"].find((candle) => candle.start === first.entryTime);
+  assert.equal(first.entryTime, first.decisionTime);
+  assert.equal(first.entryPrice, entryCandle.open);
 });

@@ -1,8 +1,8 @@
-# Bybit EU Signal Desk
+# Kraken Pro Futures Signal Desk
 
-Een onafhankelijk, statisch signalendashboard voor acht Bybit EU Spot Margin-markten. De app gebruikt uitsluitend publieke marktdata en kan geen account lezen of orders plaatsen.
+Een onafhankelijk, dependency-vrij signalendashboard voor lineaire Kraken Pro-crypto-perpetuals. De app gebruikt alleen publieke Kraken-data en kan geen account lezen of orders plaatsen.
 
-Bij een actueel LONG- of SHORT-signaal kan de handmatige orderassistent een limietorder voorbereiden. De gebruiker kopieert de waarden en controleert en verstuurt de order altijd zelf in Bybit EU.
+De scanner rangschikt de top 30 op 24-uursvolume, toont alle toegestane EEA-crypto-perpetuals in de marktzoeker en analyseert gesloten candles op 1 uur, 4 uur en 1 dag. Bij een actueel LONG- of SHORT-signaal kan de handmatige orderassistent een futuresorder voorbereiden. De gebruiker controleert en verstuurt iedere order zelf in Kraken Pro.
 
 ## Lokaal starten
 
@@ -10,7 +10,7 @@ Bij een actueel LONG- of SHORT-signaal kan de handmatige orderassistent een limi
 npm run serve
 ```
 
-Open daarna `http://localhost:4173`.
+Open daarna `http://localhost:4173`. De lokale Node-server proxy't uitsluitend de toegestane publieke Kraken-routes.
 
 ## Tests
 
@@ -18,15 +18,19 @@ Open daarna `http://localhost:4173`.
 npm test
 ```
 
+## Productie
+
+- Vercel: <https://crypto-dashboard-mu-two.vercel.app>
+- GitHub Pages verwijst vanuit de app door naar Vercel.
+- De beperkte reverse proxy staat in `vercel.json`.
+
 ## Databron en beperkingen
 
-- REST: `https://api.bybit.eu`
-- WebSocket: `wss://stream.bybit.eu/v5/public/spot`
-- Signalen gebruiken alleen gesloten candles op 1 uur, bevestigd door 4 uur en 1 dag.
-- Publieke marktstatus bevestigt niet dat een asset voor een specifiek account leenbaar is.
-- De orderassistent gebruikt standaard 20 USDC budget en 10% risico per trade. Deze lokale rekeninstellingen zijn geen werkelijk saldo.
-- Positiegrootte wordt begrensd door risicobudget, budget, leverageadvies en de publieke Bybit-orderstappen en -minima.
-- Een lokaal tradejournal ondersteunt handmatige statussen en JSON-export/import. Het bewaart nooit login-, saldo- of API-gegevens.
-- Borrowing fees, slippage en liquidatiekosten worden niet vooraf berekend en moeten handmatig in Bybit EU worden gecontroleerd.
-- De 90-daagse backtest rekent met 0,25% takerkosten per zijde plus spread, maar niet met borrowing fees.
+- REST: publieke Kraken Futures-instrumenten, tickers, candles, funding en spreads.
+- WebSocket: `wss://futures.kraken.com/ws/v1` voor live tickerdata.
+- Signalen gebruiken alleen gesloten candles en futuresfilters voor spread, funding, premium en marktstatus.
+- De orderassistent gebruikt standaard €20 budget, 10% risico, isolated margin en maximaal 10x leverage.
+- EUR wordt met de publieke `PF_EURUSD`-index naar USD omgerekend. Zonder actuele FX-data blijft de orderkaart geblokkeerd.
+- Het lokale Kraken-versie-2-journal ondersteunt JSON-export/import en bewaart nooit login-, saldo- of API-gegevens.
+- Liquidatieprijs, accountgeschiktheid, collateral en werkelijke fills moeten altijd in Kraken Pro worden gecontroleerd.
 - Dit dashboard geeft technische marktinformatie en geen financieel advies.

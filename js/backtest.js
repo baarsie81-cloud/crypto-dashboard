@@ -1,4 +1,4 @@
-import { TIMEFRAMES } from "./constants.js";
+import { TIMEFRAMES, TRADE_DEFAULTS } from "./constants.js";
 import { analyzeMarket } from "./signals.js";
 
 function candlesClosedBy(candles, intervalMs, timestamp) {
@@ -20,10 +20,7 @@ function calculateSummary(trades) {
     } else currentLosingStreak = 0;
   });
   return {
-    total: trades.length,
-    wins,
-    losses,
-    timeouts,
+    total: trades.length, wins, losses, timeouts,
     winRate: trades.length ? wins / trades.length * 100 : 0,
     averageR: trades.length ? trades.reduce((sum, trade) => sum + trade.netR, 0) / trades.length : 0,
     profitFactor: negative > 0 ? positive / negative : positive > 0 ? Infinity : 0,
@@ -32,7 +29,7 @@ function calculateSummary(trades) {
   };
 }
 
-export function evaluateTradeWindow({ candles, startIndex, direction, entry, riskDistance, costR = 0, maxHold = 24 }) {
+export function evaluateTradeWindow({ candles, startIndex, direction, entry, riskDistance, maxHold = 24 }) {
   const stop = entry - direction * riskDistance;
   const target = entry + direction * riskDistance * 1.5;
   let outcome = "timeout";
@@ -42,7 +39,6 @@ export function evaluateTradeWindow({ candles, startIndex, direction, entry, ris
     const candle = candles[index];
     const stopHit = direction === 1 ? candle.low <= stop : candle.high >= stop;
     const targetHit = direction === 1 ? candle.high >= target : candle.low <= target;
-    // Conservative rule: when a single candle touches both levels, the stop wins.
     if (stopHit) {
       outcome = "loss";
       grossR = -1;
@@ -57,15 +53,32 @@ export function evaluateTradeWindow({ candles, startIndex, direction, entry, ris
     }
     if (index === exitIndex) grossR = direction * (candle.close - entry) / riskDistance;
   }
-  return { outcome, grossR, netR: grossR - costR, exitIndex, stop, target };
+  return { outcome, grossR, exitIndex, stop, target };
+}
+
+function valueAt(series, timestamp, fallback = 0) {
+  let value = fallback;
+  for (const row of series || []) {
+    if (row.start > timestamp) break;
+    if (Number.isFinite(Number(row.value))) value = Number(row.value);
+  }
+  return value;
+}
+
+function fundingBetween(series, from, to) {
+  return (series || [])
+    .filter((row) => row.start >= from && row.start <= to)
+    .reduce((sum, row) => sum + (Number(row.value) || 0), 0);
 }
 
 export function runBacktest({
   symbol,
   candlesByTimeframe,
-  instrument = { status: "Trading", marginTrading: "utaOnly" },
-  spreadPct = 0.05,
-  takerFeePct = 0.25,
+  instrument = { tradeable: true, maxLeverage: 10 },
+  spreadSeries = [],
+  fundingSeries = [],
+  defaultSpreadPct = 0.05,
+  takerFeePct = TRADE_DEFAULTS.takerFeeRatePerSide * 100,
   startAt = Date.now() - 90 * 24 * 60 * 60 * 1000,
 }) {
   const oneHour = candlesByTimeframe["60"] || [];
@@ -85,43 +98,55 @@ export function runBacktest({
     const next = oneHour[index + 1];
     if (history["240"].length < 55 || history.D.length < 55 || !next) continue;
     const price = decisionCandle.close;
-    const spread = price * (spreadPct / 100);
+    const spreadPct = Math.max(0, valueAt(spreadSeries, decisionTime, defaultSpreadPct));
+    const spread = price * spreadPct / 100;
+    const fundingRate = valueAt(fundingSeries, decisionTime, 0);
     const result = analyzeMarket({
       symbol,
       candlesByTimeframe: history,
       ticker: {
         lastPrice: price,
-        bid1Price: price - spread / 2,
-        ask1Price: price + spread / 2,
-        turnover24h: 250_000,
+        bid: price - spread / 2,
+        ask: price + spread / 2,
+        markPrice: price,
+        indexPrice: price,
+        premiumPct: 0,
+        fundingRate,
+        fundingRatePrediction: fundingRate,
+        volumeQuote: 1_000_000,
         serverTime: decisionTime,
       },
       instrument,
       turnoverQuality: 0.75,
       dataAgeMs: 0,
     });
-    if (result.status !== "LONG" && result.status !== "SHORT") continue;
+    if (!["LONG", "SHORT"].includes(result.status)) continue;
 
     const direction = result.status === "LONG" ? 1 : -1;
     const entry = next.open;
-    const atrValue = result.states["60"].atr14;
-    const riskDistance = atrValue * 1.5;
-    const costReturn = (takerFeePct * 2 + spreadPct) / 100;
-    const costR = costReturn / (riskDistance / entry);
-    const evaluated = evaluateTradeWindow({ candles: oneHour, startIndex: index + 1, direction, entry, riskDistance, costR });
-    const { outcome, grossR, netR, exitIndex } = evaluated;
-
+    const riskDistance = result.states["60"].atr14 * 1.5;
+    const evaluated = evaluateTradeWindow({ candles: oneHour, startIndex: index + 1, direction, entry, riskDistance });
+    const exitCandle = oneHour[evaluated.exitIndex];
+    const feeSpreadReturn = (takerFeePct * 2 + spreadPct) / 100;
+    const feeSpreadCostR = feeSpreadReturn / (riskDistance / entry);
+    const fundingReturn = direction * fundingBetween(fundingSeries, next.start, exitCandle.start);
+    const fundingCostR = fundingReturn / (riskDistance / entry);
+    const netR = evaluated.grossR - feeSpreadCostR - fundingCostR;
     trades.push({
       symbol,
       direction: result.status,
+      decisionTime,
       entryTime: next.start,
-      exitTime: oneHour[exitIndex].start,
-      outcome,
-      grossR,
+      entryPrice: entry,
+      exitTime: exitCandle.start,
+      outcome: evaluated.outcome,
+      grossR: evaluated.grossR,
       netR,
+      feeSpreadCostR,
+      fundingCostR,
       score: result.score,
     });
-    index = exitIndex;
+    index = evaluated.exitIndex;
   }
 
   return { symbol, trades, summary: calculateSummary(trades) };

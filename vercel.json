@@ -1,0 +1,17 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "rewrites": [
+    { "source": "/kraken/instruments", "destination": "https://futures.kraken.com/derivatives/api/v3/instruments" },
+    { "source": "/kraken/tickers", "destination": "https://futures.kraken.com/derivatives/api/v3/tickers" },
+    { "source": "/kraken/charts/:symbol/:resolution", "destination": "https://futures.kraken.com/api/charts/v1/trade/:symbol/:resolution" },
+    { "source": "/kraken/funding/:symbol", "destination": "https://futures.kraken.com/api/charts/v1/analytics/:symbol/funding" },
+    { "source": "/kraken/spreads/:symbol", "destination": "https://futures.kraken.com/api/charts/v1/analytics/:symbol/spreads" }
+  ],
+  "headers": [
+    { "source": "/kraken/instruments", "headers": [{ "key": "x-vercel-enable-rewrite-caching", "value": "1" }, { "key": "Vercel-CDN-Cache-Control", "value": "max-age=900, stale-while-revalidate=60" }, { "key": "Cache-Control", "value": "public, max-age=60" }] },
+    { "source": "/kraken/charts/:symbol/:resolution", "headers": [{ "key": "x-vercel-enable-rewrite-caching", "value": "1" }, { "key": "Vercel-CDN-Cache-Control", "value": "max-age=60, stale-while-revalidate=30" }, { "key": "Cache-Control", "value": "public, max-age=30" }] },
+    { "source": "/kraken/funding/:symbol", "headers": [{ "key": "x-vercel-enable-rewrite-caching", "value": "1" }, { "key": "Vercel-CDN-Cache-Control", "value": "max-age=300, stale-while-revalidate=60" }, { "key": "Cache-Control", "value": "public, max-age=60" }] },
+    { "source": "/kraken/spreads/:symbol", "headers": [{ "key": "x-vercel-enable-rewrite-caching", "value": "1" }, { "key": "Vercel-CDN-Cache-Control", "value": "max-age=300, stale-while-revalidate=60" }, { "key": "Cache-Control", "value": "public, max-age=60" }] },
+    { "source": "/kraken/tickers", "headers": [{ "key": "x-vercel-enable-rewrite-caching", "value": "0" }, { "key": "Cache-Control", "value": "no-store" }] }
+  ]
+}

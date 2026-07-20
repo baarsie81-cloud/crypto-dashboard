@@ -1,27 +1,28 @@
-export const CORE_PAIRS = Object.freeze([
-  { symbol: "BTCUSDC", label: "BTC/USDC", base: "BTC" },
-  { symbol: "ETHUSDC", label: "ETH/USDC", base: "ETH" },
-  { symbol: "SOLUSDC", label: "SOL/USDC", base: "SOL" },
-  { symbol: "XRPUSDC", label: "XRP/USDC", base: "XRP" },
-  { symbol: "DOGEUSDC", label: "DOGE/USDC", base: "DOGE" },
-  { symbol: "HYPEUSDC", label: "HYPE/USDC", base: "HYPE" },
-  { symbol: "AVAXUSDC", label: "AVAX/USDC", base: "AVAX" },
-  { symbol: "AAVEUSDC", label: "AAVE/USDC", base: "AAVE" },
-]);
-
-export const API_BASE = "https://api.bybit.eu";
-export const WS_URL = "wss://stream.bybit.eu/v5/public/spot";
+export const REST_BASE = "/kraken";
+export const WS_URL = "wss://futures.kraken.com/ws/v1";
+export const PRODUCTION_URL = "https://crypto-dashboard-mu-two.vercel.app";
+export const KRAKEN_PRO_URL = "https://pro.kraken.com/app/trade";
 
 export const TIMEFRAMES = Object.freeze({
-  "60": { label: "1u", milliseconds: 60 * 60 * 1000, history: 260 },
-  "240": { label: "4u", milliseconds: 4 * 60 * 60 * 1000, history: 260 },
-  D: { label: "1d", milliseconds: 24 * 60 * 60 * 1000, history: 260 },
+  "60": { label: "1u", resolution: "1h", milliseconds: 60 * 60 * 1000 },
+  "240": { label: "4u", resolution: "4h", milliseconds: 4 * 60 * 60 * 1000 },
+  D: { label: "1d", resolution: "1d", milliseconds: 24 * 60 * 60 * 1000 },
 });
+
+export const MARKET_LIMITS = Object.freeze({
+  topMarkets: 30,
+  scanHistory: 80,
+  chartHistory: 260,
+  cachedMarkets: 40,
+  rankingRefreshMs: 15 * 60 * 1000,
+  restFallbackMs: 60 * 1000,
+});
+
 export const STORAGE_KEYS = Object.freeze({
-  settings: "bybit-eu-signal-settings-v1",
-  snapshot: "bybit-eu-market-cache-v1",
-  backtest: "bybit-eu-backtest-v1",
-  tradeJournal: "bybit-eu-manual-trade-journal-v1",
+  settings: "kraken-pro-futures-settings-v2",
+  snapshot: "kraken-pro-futures-market-cache-v2",
+  backtest: "kraken-pro-futures-backtest-v2",
+  tradeJournal: "kraken-pro-futures-trade-journal-v2",
 });
 
 export const SIGNAL_LIMITS = Object.freeze({
@@ -30,12 +31,21 @@ export const SIGNAL_LIMITS = Object.freeze({
   watchScore: 55,
   actionableSpreadPct: 0.15,
   maximumSpreadPct: 0.25,
+  adverseFundingPctPerHour: 0.05,
+  adversePremiumPct: 0.5,
   defaultMaxLeverage: 10,
 });
 
 export const TRADE_DEFAULTS = Object.freeze({
-  budgetUSDC: 20,
+  budgetEUR: 20,
   riskPct: 10,
-  feeRatePerSide: 0.0025,
-  cumulativeRiskWarningUSDC: 20,
+  makerFeeRatePerSide: 0.0002,
+  takerFeeRatePerSide: 0.0005,
+  cumulativeRiskWarningEUR: 20,
 });
+
+export const CRYPTO_CATEGORIES = Object.freeze(new Set([
+  "AI", "Community", "DEX", "DeFi", "DePIN", "Gaming", "Infrastructure",
+  "Interoperability", "Layer 1", "Layer 2", "Meme", "NFT", "Privacy",
+  "Real-world assets", "Stablecoin", "Utility", "Web3",
+]));

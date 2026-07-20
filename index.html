@@ -4,51 +4,35 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#050c10">
-  <meta name="description" content="Onafhankelijk Bybit EU Spot Margin signalendashboard voor acht liquide USDC-markten.">
+  <meta name="description" content="Onafhankelijk Kraken Pro Futures-signalendashboard voor lineaire crypto-perpetuals.">
   <link rel="icon" href="data:,">
-  <title>Bybit EU Signal Desk</title>
+  <title>Kraken Pro Futures Signal Desk</title>
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
   <div class="app-shell" id="scannerView">
     <header class="topbar">
       <div class="brand-block">
-        <h1>Bybit EU Signal Desk</h1>
-        <p>Onafhankelijk dashboard <span aria-hidden="true">·</span> Alleen signalen</p>
+        <h1>Kraken Pro Futures Signal Desk</h1>
+        <p>Onafhankelijk dashboard <span aria-hidden="true">·</span> Geen accountkoppeling</p>
       </div>
       <div class="topbar-actions">
-        <div class="connection connection-loading" id="connectionStatus" role="status">
-          <span class="connection-dot"></span>
-          <span id="connectionLabel">VERBINDEN</span>
-        </div>
-        <span class="data-source">Bybit EU data</span>
+        <div class="connection connection-loading" id="connectionStatus" role="status"><span class="connection-dot"></span><span id="connectionLabel">VERBINDEN</span></div>
+        <span class="data-source">Publieke Kraken-data</span>
         <span class="last-update">Laatst bijgewerkt: <time id="lastUpdated">—</time></span>
-        <button class="icon-button" id="refreshButton" type="button" aria-label="Marktdata vernieuwen" title="Vernieuwen">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.34 5.66M20 4v7h-7"/></svg>
+        <button class="icon-button mobile-market-button" type="button" data-open-market-search aria-label="Alle Kraken-markten zoeken" title="Markt zoeken">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16 16 5 5"/></svg>
         </button>
-        <button class="icon-button" id="settingsButton" type="button" aria-label="Instellingen openen" title="Instellingen">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V21h-4v-.08A1.7 1.7 0 0 0 8.96 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.56-1.03H3v-4h.08A1.7 1.7 0 0 0 4.6 8.96a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 8.96 4.6 1.7 1.7 0 0 0 10 3.08V3h4v.08a1.7 1.7 0 0 0 1.03 1.56 1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06a1.7 1.7 0 0 0-.34 1.88A1.7 1.7 0 0 0 20.92 10H21v4h-.08A1.7 1.7 0 0 0 19.4 15Z"/></svg>
-        </button>
+        <button class="icon-button" id="refreshButton" type="button" aria-label="Marktdata vernieuwen" title="Vernieuwen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.34 5.66M20 4v7h-7"/></svg></button>
+        <button class="icon-button" id="settingsButton" type="button" aria-label="Instellingen openen" title="Instellingen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V21h-4v-.08A1.7 1.7 0 0 0 8.96 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.56-1.03H3v-4h.08A1.7 1.7 0 0 0 4.6 8.96a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 8.96 4.6 1.7 1.7 0 0 0 10 3.08V3h4v.08a1.7 1.7 0 0 0 1.03 1.56 1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06-.06a1.7 1.7 0 0 0-.34 1.88A1.7 1.7 0 0 0 20.92 10H21v4h-.08A1.7 1.7 0 0 0 19.4 15Z"/></svg></button>
       </div>
     </header>
 
     <section class="market-strip" aria-label="Marktoverzicht">
-      <div class="market-stat">
-        <span>Marktregime</span>
-        <strong id="marketRegime">Data laden…</strong>
-      </div>
-      <div class="market-stat">
-        <span>Beste setup</span>
-        <strong id="bestSetup">—</strong>
-      </div>
-      <div class="market-stat">
-        <span>Actieve signalen</span>
-        <strong id="activeSignals">0 van 8</strong>
-      </div>
-      <div class="market-stat">
-        <span>Datakwaliteit</span>
-        <strong id="dataQuality">Controleren…</strong>
-      </div>
+      <div class="market-stat"><span>Marktregime</span><strong id="marketRegime">Data laden…</strong></div>
+      <div class="market-stat"><span>Beste setup</span><strong id="bestSetup">—</strong></div>
+      <div class="market-stat"><span>Actieve signalen</span><strong id="activeSignals">0 van 30</strong></div>
+      <div class="market-stat"><span>Datakwaliteit</span><strong id="dataQuality">Controleren…</strong></div>
     </section>
 
     <div class="alert-banner" id="alertBanner" role="alert" hidden></div>
@@ -56,191 +40,53 @@
     <main class="dashboard-grid">
       <aside class="watchlist-panel panel" aria-labelledby="watchlistTitle">
         <div class="panel-heading compact-heading">
-          <h2 id="watchlistTitle">Watchlist <span>(8)</span></h2>
+          <h2 id="watchlistTitle">Topmarkten <span>(0)</span></h2>
+          <button class="panel-icon-button" type="button" data-open-market-search aria-label="Alle markten zoeken"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16 16 5 5"/></svg><span>Zoeken</span></button>
         </div>
-        <div class="watchlist-columns" aria-hidden="true">
-          <span>Pair</span><span>Prijs (USDC)</span><span>24u %</span><span>1u</span>
-        </div>
+        <div class="watchlist-columns" aria-hidden="true"><span>Contract</span><span>Prijs (USD)</span><span>24u %</span><span>1u</span></div>
         <div class="watchlist" id="watchlist" role="list" aria-live="polite"></div>
-        <div class="signal-legend">
-          <p>1u signaal (gesloten candle)</p>
-          <div><span><i class="legend-dot long-dot"></i>Groen = LONG</span><span><i class="legend-dot short-dot"></i>Rood = SHORT</span></div>
-          <div><span><i class="legend-dot watch-dot"></i>Geel = WATCH</span><span><i class="legend-dot none-dot"></i>Grijs = GEEN TRADE</span></div>
-        </div>
+        <div class="signal-legend"><p>Top 30 op 24u-volume · gesloten candles</p><div><span><i class="legend-dot long-dot"></i>Groen = LONG</span><span><i class="legend-dot short-dot"></i>Rood = SHORT</span></div><div><span><i class="legend-dot watch-dot"></i>Geel = WATCH</span><span><i class="legend-dot none-dot"></i>Grijs = GEEN TRADE</span></div></div>
       </aside>
 
       <section class="chart-panel panel" id="chartView" aria-labelledby="selectedPair">
-        <div class="chart-titlebar">
-          <div>
-            <h2 id="selectedPair">BTC/USDC</h2>
-            <div class="mobile-price-line"><strong id="mobilePrice">—</strong><span id="mobileChange">—</span></div>
-          </div>
-          <div class="mobile-signal-summary">
-            <strong id="mobileStatus">—</strong>
-            <span>Score <b id="mobileScore">—</b> / 100</span>
-          </div>
-        </div>
-        <div class="chart-toolbar">
-          <div class="timeframe-tabs" role="tablist" aria-label="Grafiektijdframe">
-            <button type="button" class="timeframe-tab active" data-interval="60" role="tab" aria-selected="true">1u</button>
-            <button type="button" class="timeframe-tab" data-interval="240" role="tab" aria-selected="false">4u</button>
-            <button type="button" class="timeframe-tab" data-interval="D" role="tab" aria-selected="false">1d</button>
-          </div>
-          <div class="chart-tools" aria-label="Grafiekinformatie">
-            <span>Gesloten candles</span>
-            <span class="ema-label ema-blue">EMA 20 <b id="ema20Value">—</b></span>
-            <span class="ema-label ema-amber">EMA 50 <b id="ema50Value">—</b></span>
-          </div>
-        </div>
-        <div class="chart-canvas-wrap">
-          <canvas id="signalChart" aria-label="Candlestickgrafiek met EMA 20, EMA 50, volume en tradeplan"></canvas>
-        </div>
-        <div class="chart-footer">
-          <div class="timeframe-tabs secondary-tabs" aria-hidden="true">
-            <span>5m</span><span>15m</span><strong>1u</strong><span>4u</span><span>1d</span>
-          </div>
-          <span id="chartTimestamp">Alleen bevestigde data</span>
-        </div>
+        <div class="chart-titlebar"><div><h2 id="selectedPair">BTC/USD Perp</h2><div class="mobile-price-line"><strong id="mobilePrice">—</strong><span id="mobileChange">—</span></div></div><div class="mobile-signal-summary"><strong id="mobileStatus">—</strong><span>Score <b id="mobileScore">—</b> / 100</span></div></div>
+        <div class="chart-toolbar"><div class="timeframe-tabs" role="tablist" aria-label="Grafiektijdframe"><button type="button" class="timeframe-tab active" data-interval="60" role="tab" aria-selected="true">1u</button><button type="button" class="timeframe-tab" data-interval="240" role="tab" aria-selected="false">4u</button><button type="button" class="timeframe-tab" data-interval="D" role="tab" aria-selected="false">1d</button></div><div class="chart-tools" aria-label="Grafiekinformatie"><span>Gesloten candles</span><span class="ema-label ema-blue">EMA 20 <b id="ema20Value">—</b></span><span class="ema-label ema-amber">EMA 50 <b id="ema50Value">—</b></span></div></div>
+        <div class="chart-canvas-wrap"><canvas id="signalChart" aria-label="Candlestickgrafiek met EMA 20, EMA 50, volume en tradeplan"></canvas></div>
+        <div class="chart-footer"><div class="timeframe-tabs secondary-tabs" aria-hidden="true"><span>5m</span><span>15m</span><strong>1u</strong><span>4u</span><span>1d</span></div><span id="chartTimestamp">Alleen bevestigde data</span></div>
       </section>
 
       <aside class="analysis-panel panel" aria-labelledby="signalStatus">
-        <div class="score-block">
-          <h2 id="signalStatus">WACHTEN</h2>
-          <span>Score</span>
-          <strong><b id="signalScore">—</b> <small>/ 100</small></strong>
-        </div>
+        <div class="score-block"><h2 id="signalStatus">WACHTEN</h2><span>Score</span><strong><b id="signalScore">—</b> <small>/ 100</small></strong></div>
         <div class="consensus" id="consensus"></div>
-        <div class="trade-plan" id="tradePlan">
-          <h3>Tradeplan (1u)</h3>
-          <p class="empty-copy">Selecteer een markt en wacht op voldoende gesloten candles.</p>
-        </div>
-        <div class="signal-reasons">
-          <h3>Waarom dit signaal?</h3>
-          <ul id="signalReasons"><li>Marktdata wordt geladen</li></ul>
-        </div>
+        <div class="futures-context" id="futuresContext"><h3>Futurescontext</h3><p class="empty-copy">Mark-, index- en fundingdata laden…</p></div>
+        <div class="trade-plan" id="tradePlan"><h3>Tradeplan (1u)</h3><p class="empty-copy">Selecteer een markt en wacht op voldoende gesloten candles.</p></div>
+        <div class="signal-reasons"><h3>Waarom dit signaal?</h3><ul id="signalReasons"><li>Marktdata wordt geladen</li></ul></div>
       </aside>
 
       <section class="manual-order-panel panel" id="manualOrderPanel" aria-labelledby="manualOrderTitle">
-        <div class="panel-heading manual-order-heading">
-          <div>
-            <h2 id="manualOrderTitle">Handmatige orderassistent</h2>
-            <span>Bereidt alleen voor · plaatst nooit orders</span>
-          </div>
-          <div class="manual-order-tools">
-            <span class="risk-summary" id="journalRiskSummary">Gepland risico: 0,00 USDC</span>
-            <button class="secondary-button compact-button" id="openJournalButton" type="button">Tradejournal</button>
-          </div>
-        </div>
-        <div id="manualOrderContent" class="manual-order-content" aria-live="polite">
-          <div class="order-empty"><strong>Marktdata wordt gecontroleerd</strong><p>Een orderkaart verschijnt alleen bij een actueel LONG- of SHORT-signaal dat aan alle veiligheidsgrenzen voldoet.</p></div>
-        </div>
+        <div class="panel-heading manual-order-heading"><div><h2 id="manualOrderTitle">Handmatige futures-orderassistent</h2><span>Bereidt alleen voor · plaatst nooit orders</span></div><div class="manual-order-tools"><span class="risk-summary" id="journalRiskSummary">Gepland risico: €0,00</span><button class="secondary-button compact-button" id="openJournalButton" type="button">Tradejournal</button></div></div>
+        <div id="manualOrderContent" class="manual-order-content" aria-live="polite"><div class="order-empty"><strong>Marktdata wordt gecontroleerd</strong><p>Een orderkaart verschijnt alleen bij een actueel LONG- of SHORT-signaal dat aan alle futuresveiligheidsgrenzen voldoet.</p></div></div>
       </section>
 
       <section class="setups-panel panel" aria-labelledby="setupsTitle">
-        <div class="panel-heading setups-heading">
-          <h2 id="setupsTitle">Alle setups</h2>
-          <span>Alleen gesloten candles</span>
-        </div>
-        <div class="setups-table-wrap">
-          <table>
-            <thead><tr><th>Pair</th><th>1u (gesloten)</th><th>4u (gesloten)</th><th>1d (gesloten)</th><th>Score</th><th>Setup</th><th>Spread</th><th>Status</th></tr></thead>
-            <tbody id="setupsTable"></tbody>
-          </table>
-        </div>
+        <div class="panel-heading setups-heading"><h2 id="setupsTitle">Top 30 setups</h2><span>Alleen gesloten candles</span></div>
+        <div class="setups-table-wrap"><table><thead><tr><th>Contract</th><th>1u</th><th>4u</th><th>1d</th><th>Score</th><th>Funding/u</th><th>Open interest</th><th>Spread</th><th>Status</th></tr></thead><tbody id="setupsTable"></tbody></table></div>
         <div class="mobile-setups" id="mobileSetups"></div>
       </section>
     </main>
 
-    <footer class="risk-footer">
-      <div><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 21h20L12 3Z"/><path d="M12 9v5M12 18h.01"/></svg><span>Signalen zijn technische marktinformatie, geen financieel advies. Controleer altijd zelf vóór een trade.</span></div>
-      <div><span>Let op: leenbaarheid verschilt per account. Controleer dit in Bybit EU.</span><i class="connection-dot"></i><b id="footerConnection">LIVE</b></div>
-    </footer>
+    <footer class="risk-footer"><div><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 21h20L12 3Z"/><path d="M12 9v5M12 18h.01"/></svg><span>Futures en leverage kunnen snel tot volledig verlies leiden. Dit is technische marktinformatie, geen financieel advies.</span></div><div><span>Controleer geschiktheid, isolated margin en liquidatieprijs altijd in Kraken Pro.</span><i class="connection-dot"></i><b id="footerConnection">LIVE</b></div></footer>
   </div>
 
-  <nav class="mobile-nav" aria-label="Mobiele navigatie">
-    <button type="button" class="active" data-mobile-target="scannerView">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 7v5l4 2"/></svg><span>Scanner</span>
-    </button>
-    <button type="button" data-mobile-target="chartView">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3v18M18 3v18M3 8h6M15 16h6M9 5v6M15 13v6"/></svg><span>Chart</span>
-    </button>
-    <button type="button" id="mobileInfoButton">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5A3.5 3.5 0 0 1 7.5 2H12v18H7.5A3.5 3.5 0 0 0 4 23V5.5ZM20 5.5A3.5 3.5 0 0 0 16.5 2H12v18h4.5A3.5 3.5 0 0 1 20 23V5.5Z"/></svg><span>Uitleg</span>
-    </button>
-  </nav>
+  <nav class="mobile-nav" aria-label="Mobiele navigatie"><button type="button" class="active" data-mobile-target="scannerView"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 7v5l4 2"/></svg><span>Scanner</span></button><button type="button" data-mobile-target="chartView"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3v18M18 3v18M3 8h6M15 16h6M9 5v6M15 13v6"/></svg><span>Chart</span></button><button type="button" id="mobileInfoButton"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5A3.5 3.5 0 0 1 7.5 2H12v18H7.5A3.5 3.5 0 0 0 4 23V5.5ZM20 5.5A3.5 3.5 0 0 0 16.5 2H12v18h4.5A3.5 3.5 0 0 1 20 23V5.5Z"/></svg><span>Uitleg</span></button></nav>
 
-  <dialog id="settingsDialog" class="modal-dialog">
-    <form method="dialog">
-      <div class="dialog-heading"><div><h2>Instellingen</h2><p>Alleen lokale, niet-gevoelige voorkeuren.</p></div><button class="icon-button" value="cancel" aria-label="Sluiten">×</button></div>
-      <label for="maxLeverage">Maximale leverage</label>
-      <select id="maxLeverage">
-        <option value="2">2x</option><option value="3">3x</option><option value="4">4x</option><option value="5">5x</option>
-        <option value="6">6x</option><option value="7">7x</option><option value="8">8x</option><option value="9">9x</option><option value="10">10x</option>
-      </select>
-      <p class="field-note">Het dashboard kan altijd een lager advies geven op basis van stopafstand en signaalkwaliteit.</p>
-      <div class="settings-grid">
-        <div>
-          <label for="tradeBudget">Handelsbudget (USDC)</label>
-          <input id="tradeBudget" type="number" min="1" max="100000" step="0.01" inputmode="decimal" value="20">
-        </div>
-        <div>
-          <label for="riskPercentage">Risico per trade (%)</label>
-          <input id="riskPercentage" type="number" min="0.1" max="100" step="0.1" inputmode="decimal" value="10">
-        </div>
-      </div>
-      <p class="field-note">Standaard: 20 USDC budget en maximaal 10% gepland verlies. Dit is een lokale rekeninstelling, geen werkelijk saldo.</p>
-      <button class="primary-button" id="saveSettings" value="default">Opslaan</button>
-      <button class="secondary-button settings-info-button" id="openInfoButton" type="button">Uitleg & 90d backtest</button>
-    </form>
-  </dialog>
+  <dialog id="settingsDialog" class="modal-dialog"><form method="dialog"><div class="dialog-heading"><div><h2>Instellingen</h2><p>Alleen lokale, niet-gevoelige voorkeuren.</p></div><button class="icon-button" value="cancel" aria-label="Sluiten">×</button></div><label for="maxLeverage">Maximale leverage</label><select id="maxLeverage"><option value="2">2x</option><option value="3">3x</option><option value="4">4x</option><option value="5">5x</option><option value="6">6x</option><option value="7">7x</option><option value="8">8x</option><option value="9">9x</option><option value="10">10x</option></select><p class="field-note">Het dashboard kan altijd een lager advies geven op basis van stopafstand, signaalkwaliteit en Krakens EEA-marginschema.</p><div class="settings-grid"><div><label for="tradeBudget">Collateralbudget (EUR)</label><input id="tradeBudget" type="number" min="1" max="100000" step="0.01" inputmode="decimal" value="20"></div><div><label for="riskPercentage">Risico per trade (%)</label><input id="riskPercentage" type="number" min="0.1" max="100" step="0.1" inputmode="decimal" value="10"></div></div><p class="field-note">Standaard: €20 budget en maximaal 10% gepland verlies. Dit is een lokale rekeninstelling, geen werkelijk saldo.</p><button class="primary-button" id="saveSettings" value="default">Opslaan</button><button class="secondary-button settings-info-button" id="openInfoButton" type="button">Uitleg &amp; 90d backtest</button></form></dialog>
 
-  <dialog id="journalDialog" class="modal-dialog journal-dialog">
-    <div class="journal-dialog-content">
-      <div class="dialog-heading">
-        <div><h2>Handmatig tradejournal</h2><p>Alle statussen en resultaten werk je zelf bij. Alleen lokaal opgeslagen.</p></div>
-        <button class="icon-button" id="closeJournalButton" type="button" aria-label="Tradejournal sluiten">×</button>
-      </div>
-      <div class="journal-summary" id="journalSummary"></div>
-      <div class="journal-warning" id="journalWarning" hidden></div>
-      <div class="journal-list" id="journalList"></div>
-      <div class="journal-actions">
-        <button class="secondary-button" id="exportJournalButton" type="button">Exporteer JSON</button>
-        <button class="secondary-button" id="importJournalButton" type="button">Importeer JSON</button>
-        <input id="journalImportFile" type="file" accept="application/json,.json" hidden>
-      </div>
-      <p class="field-note">Importeren voegt geldige journalregels samen op ID. Saldo-, login- en API-gegevens worden niet ondersteund of bewaard.</p>
-    </div>
-  </dialog>
+  <dialog id="marketDialog" class="modal-dialog market-dialog"><div class="market-dialog-content"><div class="dialog-heading"><div><h2>Alle Kraken-perpetuals</h2><p id="marketCount">Markten laden…</p></div><button class="icon-button" id="closeMarketButton" type="button" aria-label="Marktzoeker sluiten">×</button></div><label class="market-search-label" for="marketSearchInput"><span>Zoek op coinsymbool of categorie</span><input id="marketSearchInput" type="search" autocomplete="off" placeholder="Bijvoorbeeld BTC, SOL of DeFi"></label><div class="market-results" id="marketResults" role="list"></div><p class="field-note">De top 30 wordt continu gescand. Een andere markt krijgt een volledige analyse zodra je die selecteert.</p></div></dialog>
 
-  <section class="info-drawer" id="infoDrawer" aria-labelledby="infoTitle" aria-hidden="true">
-    <div class="drawer-backdrop" data-close-drawer></div>
-    <div class="drawer-content">
-      <div class="dialog-heading">
-        <div><h2 id="infoTitle">Uitleg & validatie</h2><p>Transparante signalen, geen winstbelofte.</p></div>
-        <button class="icon-button" type="button" data-close-drawer aria-label="Uitleg sluiten">×</button>
-      </div>
-      <div class="explanation-block">
-        <h3>Hoe de score werkt</h3>
-        <p>De score combineert trend (40), momentum (30), volume (15) en volatiliteit/liquiditeit (15). Alleen een gesloten 1u-candle kan een signaal opleveren; 4u bevestigt en 1d mag niet sterk tegenspreken.</p>
-      </div>
-      <div class="explanation-block">
-        <h3>90 dagen backtest</h3>
-        <p>De test gebruikt steeds alleen data die op dat moment bekend was. Standaardkosten: 0,25% taker per zijde plus spread. Borrowing fees zijn niet inbegrepen.</p>
-        <button class="primary-button" id="runBacktest" type="button">Start backtest</button>
-        <button class="secondary-button" id="cancelBacktest" type="button" hidden>Stop test</button>
-        <div class="backtest-progress" id="backtestProgress" hidden><div><span id="backtestProgressBar"></span></div><p id="backtestProgressText">Voorbereiden…</p></div>
-        <div class="backtest-results" id="backtestResults"><p class="empty-copy">Nog geen test uitgevoerd.</p></div>
-      </div>
-      <div class="explanation-block warning-block">
-        <h3>Belangrijke beperking</h3>
-        <p>De publieke API toont of een markt margin ondersteunt, maar niet of jij de betreffende coin nu kunt lenen. Controleer leenbaarheid, kosten en risicomarge altijd in je eigen Bybit EU-account.</p>
-      </div>
-      <div class="explanation-block">
-        <h3>Handmatige orderassistent</h3>
-        <p>Bij een geldig signaal rekent het dashboard een conservatieve limietorder uit. Je kopieert de waarden, controleert marginmodus, collateral, leenbaarheid, leentarief, stop-loss en terugbetaling, en plaatst de order daarna zelf in Bybit EU. Het dashboard koppelt niet met je account.</p>
-      </div>
-    </div>
-  </section>
+  <dialog id="journalDialog" class="modal-dialog journal-dialog"><div class="journal-dialog-content"><div class="dialog-heading"><div><h2>Handmatig Kraken-tradejournal</h2><p>Alle statussen en resultaten werk je zelf bij. Alleen lokaal opgeslagen.</p></div><button class="icon-button" id="closeJournalButton" type="button" aria-label="Tradejournal sluiten">×</button></div><div class="journal-summary" id="journalSummary"></div><div class="journal-warning" id="journalWarning" hidden></div><div class="journal-list" id="journalList"></div><div class="journal-actions"><button class="secondary-button" id="exportJournalButton" type="button">Exporteer JSON</button><button class="secondary-button" id="importJournalButton" type="button">Importeer JSON</button><input id="journalImportFile" type="file" accept="application/json,.json" hidden></div><p class="field-note">Alleen Kraken Pro versie-2-journals worden geïmporteerd. Saldo-, login- en API-gegevens worden nooit ondersteund of bewaard.</p></div></dialog>
+
+  <section class="info-drawer" id="infoDrawer" aria-labelledby="infoTitle" aria-hidden="true"><div class="drawer-backdrop" data-close-drawer></div><div class="drawer-content" tabindex="-1"><div class="dialog-heading"><div><h2 id="infoTitle">Uitleg &amp; validatie</h2><p>Transparante signalen, geen winstbelofte.</p></div><button class="icon-button" type="button" data-close-drawer aria-label="Uitleg sluiten">×</button></div><div class="explanation-block"><h3>Hoe de score werkt</h3><p>De score combineert trend (40), momentum (30), volume (15) en volatiliteit/liquiditeit (15). Alleen gesloten candles tellen. Extreme funding, premium, post-only of ontbrekende futurescontext kan een setup terugzetten naar WATCH.</p></div><div class="explanation-block"><h3>90 dagen backtest · geselecteerde markt</h3><p>De test gebruikt alleen data die op dat moment bekend was, inclusief historische spread en funding. Instap is de volgende 1u-candle; takerkosten zijn 0,05% per zijde en de maximale looptijd is 24 uur.</p><button class="primary-button" id="runBacktest" type="button">Start backtest</button><button class="secondary-button" id="cancelBacktest" type="button" hidden>Stop test</button><div class="backtest-progress" id="backtestProgress" hidden><div><span id="backtestProgressBar"></span></div><p id="backtestProgressText">Voorbereiden…</p></div><div class="backtest-results" id="backtestResults"><p class="empty-copy">Nog geen test uitgevoerd.</p></div></div><div class="explanation-block warning-block"><h3>Belangrijke beperking</h3><p>Publieke data bevestigt niet of jouw EEA-account een contract werkelijk mag openen. Het dashboard kent je collateral, posities, liquidatieprijs en fills niet. Controleer dit altijd zelf in Kraken Pro.</p></div><div class="explanation-block"><h3>Handmatige futures-orderassistent</h3><p>Bij een geldig signaal wordt een conservatieve limietorder voorbereid. Jij kiest isolated margin, controleert liquidatieprijs en funding, plaatst reduce-only stop en doelen en verstuurt iedere order zelf.</p></div></div></section>
 
   <script type="module" src="./js/app.js"></script>
 </body>

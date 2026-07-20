@@ -1,9 +1,9 @@
 {
-  "name": "bybit-eu-signal-desk",
+  "name": "kraken-pro-futures-signal-desk",
   "private": true,
   "type": "module",
   "scripts": {
-    "serve": "python3 -m http.server 4173",
+    "serve": "node dev-server.mjs",
     "test": "node --test"
   }
 }
