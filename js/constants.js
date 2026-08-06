@@ -11,36 +11,46 @@ export const TIMEFRAMES = Object.freeze({
 
 export const MARKET_LIMITS = Object.freeze({
   topMarkets: 30,
-  scanHistory: 80,
-  chartHistory: 260,
+  scanHistory: 120,
+  chartHistory: 320,
   cachedMarkets: 40,
   rankingRefreshMs: 15 * 60 * 1000,
   restFallbackMs: 60 * 1000,
 });
 
 export const STORAGE_KEYS = Object.freeze({
-  settings: "kraken-pro-futures-settings-v2",
-  snapshot: "kraken-pro-futures-market-cache-v2",
-  backtest: "kraken-pro-futures-backtest-v2",
-  tradeJournal: "kraken-pro-futures-trade-journal-v2",
+  settings: "kraken-pro-futures-settings-v3",
+  snapshot: "kraken-pro-futures-market-cache-v3",
+  backtest: "kraken-pro-futures-backtest-v3",
+  tradeJournal: "kraken-pro-futures-trade-journal-v3",
 });
 
 export const SIGNAL_LIMITS = Object.freeze({
   staleAfterMs: 60_000,
-  actionableScore: 70,
-  watchScore: 55,
-  actionableSpreadPct: 0.15,
-  maximumSpreadPct: 0.25,
+  actionableScore: 80,
+  actionableConfidence: 75,
+  actionableSetupConfidence: 78,
+  watchScore: 65,
+  actionableSpreadPct: 0.10,
+  maximumSpreadPct: 0.20,
+  maximumEstimatedSlippagePct: 0.15,
+  minimumBookDepthMultiple: 5,
   adverseFundingPctPerHour: 0.05,
   adversePremiumPct: 0.5,
-  defaultMaxLeverage: 10,
+  defaultMaxLeverage: 3,
+  absoluteMaxLeverage: 4,
 });
 
 export const TRADE_DEFAULTS = Object.freeze({
   budgetEUR: 20,
-  riskPct: 10,
+  accountEquityEUR: 1000,
+  riskPct: 1,
+  maximumRiskPct: 2,
+  maximumPortfolioRiskPct: 5,
+  expectedHoldingHours: 24,
   makerFeeRatePerSide: 0.0002,
   takerFeeRatePerSide: 0.0005,
+  defaultSlippagePct: 0.05,
   cumulativeRiskWarningEUR: 20,
 });
 
