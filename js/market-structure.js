@@ -1,3 +1,5 @@
+import "./order-book.js";
+
 const finite = (value) => Number.isFinite(Number(value));
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
