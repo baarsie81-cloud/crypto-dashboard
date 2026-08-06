@@ -1,0 +1,9 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { blendSignalWithContext, contextScore, normalizeContext } from "../js/context-engine.js";
+
+const now=1_800_000_000_000;
+function payload(score=80){return{version:1,asset:"BTC",generatedAt:now-1000,expiresAt:now+60_000,sourceCount:4,components:{macro:{score,confidence:90,available:true},etf:{score,confidence:90,available:true},onchain:{score:40,confidence:70,available:true},stablecoins:{score:0,confidence:0,available:false},regulation:{score:0,confidence:0,available:false},security:{score:0,confidence:0,available:false},news:{score:30,confidence:70,available:true}},events:[]};}
+test("stale context has zero score impact",()=>{const stale=payload();stale.expiresAt=now-1;const context=normalizeContext(stale,"BTC",now);assert.equal(contextScore(context).available,false);const signal={longScore:70,shortScore:40,score:70,confidence:70,setupConfidence:70,bias:"LONG"};assert.deepEqual(blendSignalWithContext(signal,context).longScore,70);});
+test("fresh bullish context adjusts but cannot dominate technical score",()=>{const context=normalizeContext(payload(100),"BTC",now);const signal={longScore:60,shortScore:55,score:60,confidence:65,setupConfidence:60,bias:"LONG",status:"WATCH",tradeQuality:"B"};const blended=blendSignalWithContext(signal,context);assert.ok(blended.longScore>60);assert.ok(blended.longScore<85);assert.equal(blended.status,"WATCH");assert.equal(blended.tradeQuality,"B");});
+test("context does not create or confirm a technical plan",()=>{const context=normalizeContext(payload(100),"BTC",now);const signal={longScore:75,shortScore:30,score:75,confidence:75,setupConfidence:70,bias:"LONG",status:"WATCH",plan:null};const blended=blendSignalWithContext(signal,context);assert.equal(blended.plan,null);assert.equal(blended.status,"WATCH");});
