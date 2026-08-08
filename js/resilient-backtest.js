@@ -1,0 +1,23 @@
+import { KrakenClient } from "./kraken.js";
+import { runBacktest } from "./backtest.js";
+
+const client = new KrakenClient();
+const button = document.getElementById("runBacktest");
+const cancel = document.getElementById("cancelBacktest");
+const progressWrap = document.getElementById("backtestProgress");
+const progressBar = document.getElementById("backtestProgressBar");
+const progressText = document.getElementById("backtestProgressText");
+const results = document.getElementById("backtestResults");
+let cancelled = false;
+
+const escapeHtml=(value)=>String(value??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;");
+const fmt=(value,digits=2)=>Number.isFinite(Number(value))?Number(value).toLocaleString("nl-NL",{minimumFractionDigits:digits,maximumFractionDigits:digits}):"—";
+function selected(){const option=document.getElementById("chartMarketSelect")?.selectedOptions?.[0];const symbol=option?.value||"PF_XBTUSD";return{symbol,label:option?.textContent?.trim()||symbol};}
+function progress(percent,text){if(progressWrap)progressWrap.hidden=false;if(progressBar)progressBar.style.width=`${percent}%`;if(progressText)progressText.textContent=text;}
+async function instruments(){return client.getInstruments();}
+async function optional(loader,label,warnings){try{return await loader();}catch(error){warnings.push(`${label} niet beschikbaar (${error.message})`);return[];}}
+function render(result,market,warnings){const s=result.summary,pf=s.profitFactor===Infinity?"∞":fmt(s.profitFactor);results.innerHTML=`<h4>${escapeHtml(market.label)} · 90 dagen</h4><div class="result-grid"><div><span>Setups</span><strong>${s.total}</strong></div><div><span>Winst / verlies / time-out</span><strong>${s.wins} / ${s.losses} / ${s.timeouts}</strong></div><div><span>Winrate</span><strong>${fmt(s.winRate)}%</strong></div><div><span>Gemiddelde R</span><strong>${fmt(s.averageR)}R</strong></div><div><span>Profit factor</span><strong>${pf}</strong></div><div><span>Langste verliesreeks</span><strong>${s.maxLosingStreak}</strong></div></div><p class="${s.sufficientSample?"result-note":"sample-warning"}">${s.sufficientSample?"Steekproef bevat minimaal twintig trades; historische resultaten zijn geen garantie.":"Onvoldoende steekproef: minder dan twintig trades."}</p><p class="${warnings.length?"sample-warning":"result-note"}">${warnings.length?`Gedeeltelijke marktfrictiedata: ${escapeHtml(warnings.join(" · "))}. Candles en 85+-regels zijn volledig toegepast; ontbrekende funding/spread verlaagt de betrouwbaarheid van kosteninschatting.`:"Funding en spread zijn historisch meegenomen. Takerkosten: 0,05% per zijde."}</p>`;}
+
+async function run(event){event.preventDefault();event.stopImmediatePropagation();if(button.disabled)return;cancelled=false;button.disabled=true;if(cancel)cancel.hidden=false;const chosen=selected(),warnings=[];try{progress(5,`${chosen.label}: marktmetadata laden…`);const markets=await instruments();const market=markets.find(m=>m.symbol===chosen.symbol);if(!market)throw new Error("Geselecteerde Kraken-markt niet gevonden");progress(15,"1u-candles laden (retry bij timeout)…");const oneHour=await client.getHistory(market.symbol,"60",95);if(cancelled)return;progress(38,"4u- en 1d-context laden…");const[fourHour,daily]=await Promise.all([client.getHistory(market.symbol,"240",150),client.getHistory(market.symbol,"D",180)]);if(cancelled)return;if(oneHour.length<100||fourHour.length<55||daily.length<55)throw new Error("Onvoldoende verplichte candlehistorie voor betrouwbare backtest");progress(65,"Funding en spread laden…");const[fundingSeries,spreadSeries]=await Promise.all([optional(()=>client.getFundingHistory(market.symbol),"funding",warnings),optional(()=>client.getSpreadHistory(market.symbol),"spread",warnings)]);if(cancelled)return;progress(86,"85+ A/A+ setups zonder vooruitkijken doorrekenen…");const result=runBacktest({symbol:market.symbol,candlesByTimeframe:{"60":oneHour,"240":fourHour,D:daily},instrument:market,fundingSeries,spreadSeries});render(result,market,warnings);progress(100,warnings.length?"Backtest afgerond met gedeeltelijke marktfrictiedata.":"Backtest volledig afgerond.");}catch(error){results.innerHTML=`<p class="sample-warning">Backtest mislukt: ${escapeHtml(error.message)}.</p>`;progress(100,"Backtest gestopt.");}finally{button.disabled=false;if(cancel)cancel.hidden=true;cancelled=false;}}
+button?.addEventListener("click",run,true);
+cancel?.addEventListener("click",()=>{cancelled=true;if(progressText)progressText.textContent="Stoppen na de huidige Kraken-aanvraag…";},true);
