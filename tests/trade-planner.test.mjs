@@ -7,7 +7,7 @@ const ticker = { fundingRate: 0, fundingRatePrediction: 0, premiumPct: 0, suspen
 
 function signal(overrides = {}) {
   return {
-    symbol: "PF_XBTUSD", status: "LONG", score: 88, longScore: 88, shortScore: 30,
+    symbol: "PF_XBTUSD", status: "LONG", signalTier: "PRIME", riskClass: 1, strategyVersion: "prime-opportunity-shadow-v1", score: 88, longScore: 88, shortScore: 30,
     confidence: 82, setupConfidence: 86, tradeQuality: "A", executionScore: 88,
     fresh: true, availability: true, postOnly: false, futuresContext: true,
     adverseFunding: false, adversePremium: false, spreadPct: 0.02,
@@ -36,6 +36,20 @@ test("positie blijft binnen 1 procent account-risico inclusief execution costs",
   assert.equal(plan.riskBudgetEUR, 100);
   assert.ok(plan.maxPlannedLossEUR <= 100);
   assert.ok(plan.leverage <= 3);
+});
+
+test("Opportunity gebruikt exact een kwart van het PRIME-risicobudget", () => {
+  const plan = planFor(signal({ signalTier: "OPPORTUNITY", riskClass: 0.25, score: 83 }));
+  assert.equal(plan.eligible, true);
+  assert.equal(plan.riskClass, 0.25);
+  assert.equal(plan.riskBudgetEUR, 25);
+  assert.ok(plan.maxPlannedLossEUR <= 25);
+});
+
+test("Shadow krijgt nooit een handmatige orderkaart", () => {
+  const plan = planFor(signal({ signalTier: "SHADOW", riskClass: 0, score: 80 }));
+  assert.equal(plan.eligible, false);
+  assert.match(plan.blockedReasons.join(" "), /PRIME- of OPPORTUNITY/i);
 });
 
 test("meer dan 2 procent risico wordt geblokkeerd", () => {

@@ -1,2 +1,6 @@
 .playwright-cli/
 output/playwright/
+node_modules/
+.env
+.env.local
+.env.*.local

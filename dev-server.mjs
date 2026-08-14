@@ -1,6 +1,8 @@
 import { createServer } from "node:http";
 import { createReadStream, statSync } from "node:fs";
 import { extname, resolve, sep } from "node:path";
+import analyticsHandler from "./api/strategy/analytics.js";
+import collectHandler from "./api/strategy/collect.js";
 
 const root = resolve(import.meta.dirname);
 const port = Number(process.env.PORT) || 4173;
@@ -28,6 +30,8 @@ async function proxy(request, response, route, match, url) {
 
 createServer(async (request, response) => {
   const url = new URL(request.url || "/", `http://${request.headers.host || "localhost"}`);
+  if (url.pathname === "/api/strategy/analytics") return analyticsHandler(request, response);
+  if (url.pathname === "/api/strategy/collect") return collectHandler(request, response);
   const route = allowed.map((candidate) => ({ route: candidate, match: url.pathname.match(candidate.match) })).find(({ match }) => match);
   if (route) return proxy(request, response, route.route, route.match, url);
   if (url.pathname.startsWith("/kraken/")) {

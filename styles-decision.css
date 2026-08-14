@@ -1,3 +1,46 @@
 .decision-desk{grid-column:1/-1;padding:0;overflow:hidden}.primary-decision-desk{order:-10}.decision-heading{display:flex;justify-content:space-between;align-items:center;gap:18px;padding:16px 18px;border-bottom:1px solid var(--line)}.decision-heading h2{margin:0;font-size:19px}.decision-heading span,.decision-heading small{color:var(--muted);font-size:12px}.decision-summary{display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid var(--line)}.decision-summary>div{padding:12px 18px;border-right:1px solid var(--line);display:grid;gap:3px}.decision-summary>div:last-child{border-right:0}.decision-summary span{font-size:11px;color:var(--muted)}.decision-summary strong{font-size:18px}.decision-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--line)}.universe-decision{background:var(--surface);position:relative}.universe-decision.is-ready{box-shadow:inset 0 0 0 1px rgba(101,211,77,.45)}.trade-ready-banner,.trade-gate-note{padding:8px 18px;font-size:11px;font-weight:700;border-bottom:1px solid var(--line-soft)}.trade-ready-banner{color:var(--green);background:rgba(101,211,77,.08)}.trade-gate-note{color:var(--muted);background:var(--surface-2)}.decision-card{background:var(--surface);padding:16px 18px;display:grid;gap:14px}.decision-card header{display:flex;align-items:center;justify-content:space-between}.decision-card header>div:first-child{display:grid;gap:3px}.decision-eyebrow{color:var(--muted);font-size:12px}.decision-card header strong{font-size:20px}.quality-badge{min-width:42px;height:42px;display:grid;place-items:center;border:1px solid var(--line);border-radius:50%;font-size:14px;font-weight:800}.quality-aplus,.quality-a{color:var(--green);border-color:rgba(101,211,77,.45)}.quality-b{color:var(--amber)}.quality-c,.quality-d{color:var(--red)}.decision-score-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.decision-score-grid>div,.decision-levels>div{padding:10px;border:1px solid var(--line-soft);background:var(--surface-2);border-radius:5px;display:grid;gap:3px}.decision-score-grid span,.decision-levels span{color:var(--muted);font-size:11px}.decision-score-grid strong{font-size:19px}.decision-meta,.decision-horizons{display:flex;flex-wrap:wrap;gap:8px 16px;color:var(--muted);font-size:12px}.decision-meta b,.decision-horizons b{color:var(--text);margin-left:4px}.decision-levels{display:grid;grid-template-columns:1fr 1fr;gap:8px}.decision-levels b{font-size:13px}.decision-setup{border-top:1px solid var(--line-soft);padding-top:12px}.setup-type{display:inline-block;margin-bottom:8px;color:var(--amber);font-size:11px;font-weight:800;letter-spacing:.04em}.decision-setup dl{display:grid;grid-template-columns:auto 1fr;gap:5px 12px;margin:0;font-size:12px}.decision-setup dt{color:var(--muted)}.decision-setup dd{margin:0;text-align:right}.wait-rule{margin:0;padding:10px 12px;border-left:3px solid var(--amber);background:rgba(255,189,46,.07);font-size:12px;color:#dce4e7}.positive{color:var(--green)!important}.negative{color:var(--red)!important}.neutral{color:var(--amber)!important}.chart-market-picker{display:flex;align-items:center;gap:8px;margin-bottom:5px}.chart-market-picker label{color:var(--muted);font-size:11px}.chart-market-picker select{max-width:190px;min-height:32px;padding:4px 28px 4px 9px;border:1px solid var(--line);border-radius:5px;background:var(--surface-2);color:var(--text);font-size:12px}.chart-market-picker select:disabled{opacity:.6}
 /* Legacy scanner data still powers chart/order/backtest, but no longer dominates the decision workflow. */
 .watchlist-panel,.setups-panel{display:none!important}.dashboard-grid{grid-template-columns:minmax(0,1.65fr) minmax(300px,.65fr)!important}.chart-panel{grid-column:1}.analysis-panel{grid-column:2}.manual-order-panel{grid-column:1/-1}.market-strip .market-stat:nth-child(3) span{font-size:0}.market-strip .market-stat:nth-child(3) span:after{content:"85+ signalen";font-size:inherit}.signal-legend{display:none}.mobile-nav button:first-child span{font-size:0}.mobile-nav button:first-child span:after{content:"Decision";font-size:12px}@media(max-width:900px){.decision-cards{grid-template-columns:1fr}.decision-heading{align-items:flex-start;flex-direction:column}.decision-score-grid{grid-template-columns:repeat(2,1fr)}.decision-summary{grid-template-columns:repeat(2,1fr)}.dashboard-grid{grid-template-columns:1fr!important}.chart-panel,.analysis-panel{grid-column:1}.decision-summary>div:nth-child(2){border-right:0}.chart-market-picker select{max-width:160px}}
+
+/* PRIME, OPPORTUNITY en SHADOW blijven bewust visueel gescheiden. */
+.opportunity-banner,.shadow-banner{padding:8px 18px;font-size:11px;font-weight:700;border-bottom:1px solid var(--line-soft)}
+.opportunity-banner{color:#ffbd2e;background:rgba(255,189,46,.12);border-left:3px solid #ffbd2e}
+.shadow-banner{color:#9eabb0;background:rgba(158,171,176,.08)}
+.tier-opportunity.is-ready{box-shadow:inset 0 0 0 1px rgba(255,189,46,.45)}
+.tier-shadow .decision-card{opacity:.82}
+.quality-a-{color:var(--amber);border-color:rgba(255,189,46,.45)}
+.opportunity-text{color:var(--amber)!important}
+.strategy-validation{grid-column:1/-1;overflow:hidden}
+.strategy-validation details{border-bottom:1px solid var(--line)}
+.strategy-validation summary{min-height:44px;padding:10px 18px;display:flex;align-items:center;justify-content:space-between;gap:16px;cursor:pointer;color:var(--text);list-style:none}
+.strategy-validation summary::-webkit-details-marker{display:none}
+.strategy-validation summary>span{display:flex;align-items:center;gap:10px}
+.strategy-validation summary small,.strategy-validation summary>span:last-child{color:var(--muted);font-size:10px}
+.strategy-validation summary>span:last-child:after{content:"⌄";margin-left:5px;color:var(--amber)}
+.strategy-validation details[open] summary>span:last-child:after{content:"⌃"}
+.strategy-validation summary:focus-visible{outline:2px solid var(--amber);outline-offset:-2px}
+.strategy-validation-body{border-top:1px solid var(--line)}
+.strategy-heading{display:flex;justify-content:space-between;gap:18px;align-items:center;padding:16px 18px;border-bottom:1px solid var(--line)}
+.strategy-heading h2{margin:0;font-size:17px}
+.strategy-heading span,.strategy-heading small{font-size:11px;color:var(--muted)}
+.tier-counts{display:grid;grid-template-columns:repeat(3,1fr);border-bottom:1px solid var(--line)}
+.tier-counts>div{display:grid;gap:2px;padding:12px 18px;border-right:1px solid var(--line)}
+.tier-counts>div:last-child{border-right:0}
+.tier-counts span,.tier-counts small{font-size:10px;color:var(--muted)}
+.tier-counts strong{font-size:20px}
+.tier-counts .opportunity-tier strong{color:var(--amber)}
+.strategy-performance{padding:12px 18px;overflow-x:auto}
+.performance-table{min-width:820px}
+.performance-row{display:grid;grid-template-columns:minmax(150px,1.4fr) repeat(8,minmax(58px,.7fr));gap:8px;align-items:center;position:relative;padding:10px 0 22px;border-bottom:1px solid var(--line-soft);font-size:11px}
+.performance-row:last-child{border-bottom:0}
+.performance-row strong{font-size:12px}
+.performance-head{padding-bottom:8px;color:var(--muted);font-size:10px}
+.performance-row small{position:absolute;left:0;bottom:5px;font-size:9px}
+.sample-low{color:var(--amber)}
+.sample-ok{color:var(--green)}
+@media(max-width:900px){
+  .strategy-heading{align-items:flex-start;flex-direction:column}
+  .tier-counts{grid-template-columns:1fr}
+  .tier-counts>div{border-right:0;border-bottom:1px solid var(--line-soft)}
+  .tier-counts>div:last-child{border-bottom:0}
+}

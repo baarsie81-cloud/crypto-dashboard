@@ -12,6 +12,7 @@ import { closedCandles, ema, lastFinite } from "./indicators.js";
 import { KrakenClient, loadSnapshot, rankTopMarkets, runPool, saveSnapshot } from "./kraken.js";
 import { analyzeMarket, rankTurnover } from "./signals.js";
 import { ManualTradeAssistant } from "./trade-assistant.js";
+import { classifyDashboardSignals } from "./strategy-runtime.js";
 
 if (location.hostname === "baarsie81-cloud.github.io") {
   location.replace(`${PRODUCTION_URL}${location.pathname.replace(/^\/crypto-dashboard/, "")}${location.search}${location.hash}`);
@@ -110,6 +111,9 @@ function statusClass(status) {
 
 function visibleStatus(signal) {
   if (!signal) return "GEEN TRADE";
+  if (signal.signalTier === "PRIME" && ["LONG", "SHORT"].includes(signal.status)) return `PRIME ${signal.status}`;
+  if (signal.signalTier === "OPPORTUNITY" && ["LONG", "SHORT"].includes(signal.status)) return `OPPORTUNITY ${signal.status}`;
+  if (signal.signalTier === "SHADOW") return signal.tierStatus === "CHASE_BLOCKED" ? "SHADOW · ENTRY GEMIST" : "SHADOW · RESEARCH";
   return signal.status === "WATCH" && signal.bias !== "NEUTRAAL" ? `${signal.bias} WATCH` : signal.status;
 }
 
@@ -196,7 +200,7 @@ function evaluateSignals() {
       maxLeverage: state.settings.maxLeverage,
     }));
   });
-  state.signals = next;
+  state.signals = classifyDashboardSignals({ signals: next, candles: state.candles, tickers: state.tickers });
 }
 
 async function loadCandlesForMarkets(markets, { count = MARKET_LIMITS.scanHistory, intervals = Object.keys(TIMEFRAMES), showProgress = false } = {}) {
@@ -288,7 +292,6 @@ function connectRealtime() {
       mergeTickers([ticker]);
       state.lastUsefulAt = Date.now();
       state.source = "live";
-      evaluateSignals();
       scheduleRender();
     },
   });
@@ -371,14 +374,14 @@ function renderConnection() {
 function renderMarketStrip() {
   const actionable = state.topMarkets
     .map((market) => ({ market, signal: state.signals.get(market.symbol) }))
-    .filter(({ signal }) => ["LONG", "SHORT"].includes(signal?.status));
+    .filter(({ signal }) => ["PRIME", "OPPORTUNITY"].includes(signal?.signalTier) && signal?.classification?.eligible);
   const best = [...actionable].sort((a, b) => b.signal.score - a.signal.score)[0];
   const btc = state.signals.get("PF_XBTUSD");
   const regime = btc?.timeframeBias?.["240"] || "NEUTRAAL";
   elements.marketRegime.textContent = regime === "LONG" ? "Opwaarts" : regime === "SHORT" ? "Neerwaarts" : "Neutraal";
   elements.marketRegime.className = regime === "SHORT" ? "bad" : regime === "NEUTRAAL" ? "warning" : "";
-  elements.bestSetup.textContent = best ? `${best.market.base} ${best.signal.status} ${best.signal.score}` : "Geen vrijgave";
-  elements.activeSignals.textContent = `${actionable.length} van ${state.topMarkets.length || 30}`;
+  elements.bestSetup.textContent = best ? `${best.market.base} ${best.signal.signalTier} ${best.signal.score}` : "Geen vrijgave";
+  elements.activeSignals.textContent = String(actionable.filter(({ signal }) => signal.signalTier === "PRIME").length);
   const freshCount = state.topMarkets.filter((market) => Date.now() - (Number(state.tickers.get(market.symbol)?.receivedAt) || 0) <= SIGNAL_LIMITS.staleAfterMs).length;
   elements.dataQuality.textContent = state.markets.length ? `${freshCount}/${state.topMarkets.length} actueel` : "Geen data";
   elements.dataQuality.className = freshCount === state.topMarkets.length && freshCount > 0 ? "" : freshCount ? "warning" : "bad";
@@ -503,10 +506,11 @@ function renderAll() {
 function scheduleRender() {
   if (state.renderQueued) return;
   state.renderQueued = true;
-  requestAnimationFrame(() => {
+  setTimeout(() => {
     state.renderQueued = false;
+    evaluateSignals();
     renderAll();
-  });
+  }, 500);
 }
 
 async function selectMarket(symbol) {

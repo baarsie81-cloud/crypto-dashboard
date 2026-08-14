@@ -60,7 +60,7 @@ function planAsText(plan) {
   const funding = plan.fundingEffectUSDPerHour < 0 ? "geschatte betaling" : "geschatte ontvangst";
   return [
     `HANDMATIGE KRAKEN PRO FUTURES-ORDERKAART — ${plan.pairLabel}`,
-    `Symbool: ${plan.symbol} · ${plan.direction} · score ${plan.score}/100`,
+    `Symbool: ${plan.symbol} · ${plan.direction} · ${plan.signalTier} · score ${plan.score}/100 · Risk class ${plan.riskClass}R`,
     `1u ${plan.timeframeBias["60"]} · 4u ${plan.timeframeBias["240"]} · 1d ${plan.timeframeBias.D}`,
     `Limietprijs: ${formatPrice(plan.entry, plan.tickSize)} USD`,
     `Entryzone: ${formatPrice(plan.entryLow, plan.tickSize)} – ${formatPrice(plan.entryHigh, plan.tickSize)} USD`,
@@ -124,7 +124,7 @@ export class ManualTradeAssistant {
     const fundingAction = plan.fundingEffectUSDPerHour < 0 ? "betaling" : "ontvangst";
     this.elements.manualOrderContent.innerHTML = `<article class="manual-order-card ${directionClass}">
       <div class="order-card-header">
-        <div><span class="manual-only-badge">HANDMATIG · GEEN ACCOUNTKOPPELING</span><h3>${escapeHtml(plan.pairLabel)} <b>${plan.direction}</b></h3></div>
+        <div><span class="manual-only-badge">${plan.signalTier} · RISK CLASS ${plan.riskClass}R · HANDMATIG</span><h3>${escapeHtml(plan.pairLabel)} <b>${plan.direction}</b></h3></div>
         <div class="order-score"><span>Score</span><strong>${plan.score}</strong><small>/100</small></div>
       </div>
       <div class="order-context">

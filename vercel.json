@@ -1,5 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "crons": [
+    { "path": "/api/strategy/collect", "schedule": "*/15 * * * *" }
+  ],
   "rewrites": [
     { "source": "/kraken/instruments", "destination": "https://futures.kraken.com/derivatives/api/v3/instruments" },
     { "source": "/kraken/tickers", "destination": "https://futures.kraken.com/derivatives/api/v3/tickers" },

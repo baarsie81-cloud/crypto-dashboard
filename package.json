@@ -4,6 +4,10 @@
   "type": "module",
   "scripts": {
     "serve": "node dev-server.mjs",
-    "test": "node --test"
+    "test": "node --test",
+    "check": "node scripts/check-syntax.mjs"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.1.0"
   }
 }
