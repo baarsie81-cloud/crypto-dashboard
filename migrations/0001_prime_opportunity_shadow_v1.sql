@@ -2,7 +2,7 @@ BEGIN;
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
-CREATE TABLE IF NOT EXISTS trade_setups (
+CREATE TABLE IF NOT EXISTS public.trade_setups (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   created_at timestamptz NOT NULL DEFAULT now(),
   last_seen_at timestamptz NOT NULL DEFAULT now(),
@@ -41,9 +41,10 @@ CREATE TABLE IF NOT EXISTS trade_setups (
   dedupe_key text NOT NULL,
   strategy_version text NOT NULL,
   status text NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'PROMOTED', 'INVALIDATED', 'MISSED_ENTRY', 'CHASE_BLOCKED')),
-  parent_setup_id uuid REFERENCES trade_setups(id) ON DELETE SET NULL,
+  parent_setup_id uuid REFERENCES public.trade_setups(id) ON DELETE SET NULL,
   previous_tier text CHECK (previous_tier IS NULL OR previous_tier IN ('PRIME', 'OPPORTUNITY', 'SHADOW')),
   promoted_at timestamptz,
+  invalidated_at timestamptz,
   metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
   CHECK (entry_low <= entry_high),
   CHECK (
@@ -53,9 +54,12 @@ CREATE TABLE IF NOT EXISTS trade_setups (
   )
 );
 
-CREATE TABLE IF NOT EXISTS setup_outcomes (
+ALTER TABLE public.trade_setups
+  ADD COLUMN IF NOT EXISTS invalidated_at timestamptz;
+
+CREATE TABLE IF NOT EXISTS public.setup_outcomes (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  setup_id uuid NOT NULL REFERENCES trade_setups(id) ON DELETE CASCADE,
+  setup_id uuid NOT NULL REFERENCES public.trade_setups(id) ON DELETE CASCADE,
   evaluation_horizon text NOT NULL,
   evaluated_at timestamptz NOT NULL DEFAULT now(),
   mfe_price numeric,
@@ -80,10 +84,10 @@ CREATE TABLE IF NOT EXISTS setup_outcomes (
   UNIQUE (setup_id, evaluation_horizon)
 );
 
-CREATE TABLE IF NOT EXISTS setup_transitions (
+CREATE TABLE IF NOT EXISTS public.setup_transitions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  setup_id uuid NOT NULL REFERENCES trade_setups(id) ON DELETE CASCADE,
-  previous_setup_id uuid REFERENCES trade_setups(id) ON DELETE SET NULL,
+  setup_id uuid NOT NULL REFERENCES public.trade_setups(id) ON DELETE CASCADE,
+  previous_setup_id uuid REFERENCES public.trade_setups(id) ON DELETE SET NULL,
   previous_tier text NOT NULL CHECK (previous_tier IN ('PRIME', 'OPPORTUNITY', 'SHADOW')),
   new_tier text NOT NULL CHECK (new_tier IN ('PRIME', 'OPPORTUNITY', 'SHADOW')),
   previous_score smallint NOT NULL CHECK (previous_score BETWEEN 0 AND 100),
@@ -93,7 +97,7 @@ CREATE TABLE IF NOT EXISTS setup_transitions (
 );
 
 -- Eén compacte uurwaarneming per markt volstaat voor OI-richting; er worden geen ticks bewaard.
-CREATE TABLE IF NOT EXISTS strategy_market_snapshots (
+CREATE TABLE IF NOT EXISTS public.strategy_market_snapshots (
   symbol text NOT NULL,
   observed_hour timestamptz NOT NULL,
   last_price numeric,
@@ -103,19 +107,31 @@ CREATE TABLE IF NOT EXISTS strategy_market_snapshots (
   PRIMARY KEY (symbol, observed_hour)
 );
 
-CREATE INDEX IF NOT EXISTS trade_setups_created_at_idx ON trade_setups (created_at DESC);
-CREATE INDEX IF NOT EXISTS trade_setups_symbol_created_idx ON trade_setups (symbol, created_at DESC);
-CREATE INDEX IF NOT EXISTS trade_setups_score_idx ON trade_setups (score);
-CREATE INDEX IF NOT EXISTS trade_setups_tier_idx ON trade_setups (signal_tier, created_at DESC);
-CREATE INDEX IF NOT EXISTS trade_setups_status_idx ON trade_setups (status, last_seen_at);
-CREATE INDEX IF NOT EXISTS trade_setups_strategy_idx ON trade_setups (strategy_version, created_at DESC);
-CREATE INDEX IF NOT EXISTS trade_setups_lifecycle_idx ON trade_setups (lifecycle_key, created_at DESC);
-CREATE INDEX IF NOT EXISTS trade_setups_dedupe_idx ON trade_setups (dedupe_key);
+-- HTTP-queries delen geen databasesessie; deze lease voorkomt daarom overlap
+-- tussen een handmatige collector-run en een cron-run, ook op gepoolde Neon-connecties.
+CREATE TABLE IF NOT EXISTS public.strategy_collector_locks (
+  lock_name text PRIMARY KEY,
+  owner_token text NOT NULL,
+  acquired_at timestamptz NOT NULL,
+  expires_at timestamptz NOT NULL,
+  CHECK (expires_at > acquired_at)
+);
+
+CREATE INDEX IF NOT EXISTS trade_setups_created_at_idx ON public.trade_setups (created_at DESC);
+CREATE INDEX IF NOT EXISTS trade_setups_symbol_created_idx ON public.trade_setups (symbol, created_at DESC);
+CREATE INDEX IF NOT EXISTS trade_setups_score_idx ON public.trade_setups (score);
+CREATE INDEX IF NOT EXISTS trade_setups_tier_idx ON public.trade_setups (signal_tier, created_at DESC);
+CREATE INDEX IF NOT EXISTS trade_setups_status_idx ON public.trade_setups (status, last_seen_at);
+CREATE INDEX IF NOT EXISTS trade_setups_strategy_idx ON public.trade_setups (strategy_version, created_at DESC);
+CREATE INDEX IF NOT EXISTS trade_setups_lifecycle_idx ON public.trade_setups (lifecycle_key, created_at DESC);
+CREATE INDEX IF NOT EXISTS trade_setups_dedupe_idx ON public.trade_setups (dedupe_key);
 CREATE UNIQUE INDEX IF NOT EXISTS trade_setups_active_dedupe_unique
-  ON trade_setups (dedupe_key)
+  ON public.trade_setups (dedupe_key)
   WHERE status IN ('ACTIVE', 'CHASE_BLOCKED', 'MISSED_ENTRY');
-CREATE INDEX IF NOT EXISTS setup_outcomes_setup_idx ON setup_outcomes (setup_id);
-CREATE INDEX IF NOT EXISTS setup_outcomes_status_idx ON setup_outcomes (outcome_status, evaluated_at DESC);
-CREATE INDEX IF NOT EXISTS strategy_market_snapshots_observed_idx ON strategy_market_snapshots (observed_hour DESC);
+CREATE INDEX IF NOT EXISTS trade_setups_parent_idx ON public.trade_setups (parent_setup_id);
+CREATE INDEX IF NOT EXISTS setup_outcomes_setup_idx ON public.setup_outcomes (setup_id);
+CREATE INDEX IF NOT EXISTS setup_outcomes_status_idx ON public.setup_outcomes (outcome_status, evaluated_at DESC);
+CREATE INDEX IF NOT EXISTS setup_transitions_previous_idx ON public.setup_transitions (previous_setup_id);
+CREATE INDEX IF NOT EXISTS strategy_market_snapshots_observed_idx ON public.strategy_market_snapshots (observed_hour DESC);
 
 COMMIT;

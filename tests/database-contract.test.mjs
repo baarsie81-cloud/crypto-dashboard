@@ -18,11 +18,15 @@ function responseRecorder() {
 test("Neon migration bevat setup, outcome, promotion, dedupe en kostenbewuste snapshots", async () => {
   const sql = await readFile(new URL("../migrations/0001_prime_opportunity_shadow_v1.sql", import.meta.url), "utf8");
   for (const expected of [
-    "CREATE TABLE IF NOT EXISTS trade_setups",
-    "CREATE TABLE IF NOT EXISTS setup_outcomes",
-    "CREATE TABLE IF NOT EXISTS setup_transitions",
-    "CREATE TABLE IF NOT EXISTS strategy_market_snapshots",
+    "CREATE TABLE IF NOT EXISTS public.trade_setups",
+    "CREATE TABLE IF NOT EXISTS public.setup_outcomes",
+    "CREATE TABLE IF NOT EXISTS public.setup_transitions",
+    "CREATE TABLE IF NOT EXISTS public.strategy_market_snapshots",
+    "CREATE TABLE IF NOT EXISTS public.strategy_collector_locks",
     "trade_setups_active_dedupe_unique",
+    "trade_setups_parent_idx",
+    "setup_transitions_previous_idx",
+    "invalidated_at",
     "raw_result_r",
     "split_result_r",
     "AMBIGUOUS",

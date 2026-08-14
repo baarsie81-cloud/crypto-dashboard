@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { TIMEFRAMES } from "../js/constants.js";
 import { normalizeCandle, normalizeTicker, filterCryptoPerpetuals } from "../js/kraken.js";
 import { calculateBookExecution } from "../js/order-book.js";
@@ -9,15 +10,19 @@ import { buildSetupRecord } from "../js/setup-lifecycle.js";
 import { evaluateSetupOutcome } from "../js/outcome-evaluator.js";
 import { strategyFlags } from "../js/strategy-config.js";
 import {
+  acquireCollectorRunLock,
   dueOutcomes,
   invalidateUnseenSetups,
   openInterestChange,
   recordSetup,
+  releaseCollectorRunLock,
   saveMarketSnapshot,
   saveOutcome,
 } from "./setup-repository.js";
 
 const KRAKEN_BASE = "https://futures.kraken.com";
+const MINUTE = 60 * 1000;
+const OUTCOME_BATCH_LIMIT = 3;
 async function fetchJson(path, { fetchImpl = fetch, parameters = {}, timeout = 12_000 } = {}) {
   const url = new URL(path, KRAKEN_BASE);
   Object.entries(parameters).forEach(([key, value]) => {
@@ -74,7 +79,7 @@ async function runPool(items, worker, concurrency = 4) {
   return results;
 }
 
-export async function collectStrategySnapshot({ sql, env = process.env, fetchImpl = fetch, now = Date.now() } = {}) {
+async function collectStrategySnapshotLocked({ sql, env, fetchImpl, now }) {
   const flags = strategyFlags(env);
   const observedAt = new Date(now).toISOString();
   const [instrumentPayload, tickerPayload] = await Promise.all([
@@ -161,17 +166,47 @@ export async function collectStrategySnapshot({ sql, env = process.env, fetchImp
   return { observedAt, scanned: valid.length, setups, alerts, outcomes, errors, flags };
 }
 
+export async function collectStrategySnapshot({ sql, env = process.env, fetchImpl = fetch, now = Date.now() } = {}) {
+  const ownerToken = randomUUID();
+  const observedAt = new Date(now).toISOString();
+  if (!await acquireCollectorRunLock(sql, ownerToken)) {
+    return {
+      observedAt,
+      skipped: true,
+      reason: "COLLECTOR_ALREADY_RUNNING",
+      scanned: 0,
+      setups: [],
+      alerts: [],
+      outcomes: [],
+      errors: [],
+      flags: strategyFlags(env),
+    };
+  }
+  try {
+    return await collectStrategySnapshotLocked({ sql, env, fetchImpl, now });
+  } finally {
+    try {
+      await releaseCollectorRunLock(sql, ownerToken);
+    } catch (error) {
+      console.warn("Strategy collector lock kon niet direct worden vrijgegeven", error);
+    }
+  }
+}
+
 export async function evaluateDueStrategyOutcomes({ sql, fetchImpl = fetch, now = Date.now() } = {}) {
-  const due = await dueOutcomes(sql, now, 25);
+  // Een 24h-verzoek bevat circa 1.441 candles; houd de batch ruim binnen de functietijd.
+  const due = await dueOutcomes(sql, now, OUTCOME_BATCH_LIMIT);
   const results = [];
   for (const setup of due) {
     try {
-      const from = Math.floor(Date.parse(setup.created_at) / 1000);
-      const to = Math.ceil((Date.parse(setup.created_at) + 24 * 60 * 60 * 1000) / 1000);
-      const payload = await fetchJson(`/api/charts/v1/trade/${setup.symbol}/1h`, { fetchImpl, parameters: { from, to } });
+      const createdAt = Date.parse(setup.created_at);
+      const horizonEnd = createdAt + 24 * 60 * 60 * 1000;
+      const from = Math.floor(createdAt / MINUTE) * MINUTE / 1000;
+      const to = Math.ceil(horizonEnd / MINUTE) * MINUTE / 1000;
+      const payload = await fetchJson(`/api/charts/v1/trade/${setup.symbol}/1m`, { fetchImpl, parameters: { from, to } });
       const candles = (payload.candles || []).map(normalizeCandle).sort((a, b) => a.start - b.start);
-      const outcome = evaluateSetupOutcome(setup, candles, { evaluatedAt: now });
-      if (outcome.outcomeStatus !== "OPEN") await saveOutcome(sql, setup.id, outcome);
+      const outcome = evaluateSetupOutcome(setup, candles, { evaluatedAt: now, candleIntervalMs: MINUTE });
+      if (outcome.dataComplete) await saveOutcome(sql, setup.id, outcome);
       results.push({ setupId: setup.id, symbol: setup.symbol, status: outcome.outcomeStatus });
     } catch (error) {
       results.push({ setupId: setup.id, symbol: setup.symbol, status: "ERROR", error: error.message });

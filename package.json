@@ -5,6 +5,7 @@
   "scripts": {
     "serve": "node dev-server.mjs",
     "test": "node --test",
+    "test:integration": "node --test tests/setup-repository.integration.test.mjs",
     "check": "node scripts/check-syntax.mjs"
   },
   "dependencies": {

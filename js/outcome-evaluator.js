@@ -1,11 +1,57 @@
 const finite = (value) => value !== null && value !== undefined && value !== "" && typeof value !== "boolean" && Number.isFinite(Number(value));
+const HOUR = 60 * 60 * 1000;
 
 function hit(candle, direction, level, type) {
   if (direction === "LONG") return type === "stop" ? Number(candle.low) <= level : Number(candle.high) >= level;
   return type === "stop" ? Number(candle.high) >= level : Number(candle.low) <= level;
 }
 
-export function evaluateSetupOutcome(setup, candles = [], { horizonHours = 24, evaluatedAt = Date.now() } = {}) {
+function pendingOutcome(horizonHours, evaluatedAt, coverageReason, candleCount = 0) {
+  return {
+    evaluationHorizon: `${horizonHours}h`,
+    evaluatedAt: new Date(evaluatedAt).toISOString(),
+    outcomeStatus: "PENDING_DATA",
+    dataComplete: false,
+    coverageReason,
+    candleCount,
+    ambiguous: false,
+    rawResultR: null,
+    splitResultR: null,
+    resultR: null,
+  };
+}
+
+function coveredCandles(candles, { createdAt, horizonEnd, evaluatedAt, candleIntervalMs }) {
+  const overlapping = candles
+    .filter((candle) => Number(candle?.start) < horizonEnd && Number(candle?.start) + candleIntervalMs > createdAt)
+    .sort((a, b) => Number(a.start) - Number(b.start));
+  if (overlapping.some((candle) => ![candle.start, candle.open, candle.high, candle.low, candle.close].every(finite)
+    || Number(candle.high) < Number(candle.low))) {
+    return { complete: false, reason: "INVALID_CANDLE", rows: [] };
+  }
+  const rows = [...new Map(overlapping
+    .filter((candle) => Number(candle.start) + candleIntervalMs <= evaluatedAt)
+    .map((candle) => [Number(candle.start), candle])).values()];
+  if (!rows.length) return { complete: false, reason: "NO_CLOSED_CANDLES", rows };
+  if (Number(rows[0].start) > createdAt || Number(rows[0].start) + candleIntervalMs <= createdAt) {
+    return { complete: false, reason: "START_NOT_COVERED", rows };
+  }
+  for (let index = 1; index < rows.length; index += 1) {
+    if (Number(rows[index].start) > Number(rows[index - 1].start) + candleIntervalMs) {
+      return { complete: false, reason: "CANDLE_GAP", rows };
+    }
+  }
+  if (Number(rows.at(-1).start) + candleIntervalMs < horizonEnd) {
+    return { complete: false, reason: "END_NOT_COVERED", rows };
+  }
+  return { complete: true, reason: null, rows };
+}
+
+export function evaluateSetupOutcome(setup, candles = [], {
+  horizonHours = 24,
+  evaluatedAt = Date.now(),
+  candleIntervalMs = HOUR,
+} = {}) {
   const direction = setup?.direction;
   const entry = Number(setup?.referenceEntry ?? setup?.reference_entry);
   const stop = Number(setup?.stopPrice ?? setup?.stop_price);
@@ -14,13 +60,19 @@ export function evaluateSetupOutcome(setup, candles = [], { horizonHours = 24, e
   const createdAt = Date.parse(setup?.createdAt ?? setup?.created_at);
   const risk = Math.abs(entry - stop);
   if (![entry, stop, target1, target2, createdAt, risk].every(finite) || !(risk > 0) || !["LONG", "SHORT"].includes(direction)) {
-    return { outcomeStatus: "INVALIDATED", ambiguous: false, rawResultR: null, splitResultR: null, resultR: null };
+    return { outcomeStatus: "INVALIDATED", dataComplete: true, ambiguous: false, rawResultR: null, splitResultR: null, resultR: null };
   }
   const horizonEnd = createdAt + horizonHours * 60 * 60 * 1000;
-  const rows = candles
-    .filter((candle) => Number(candle.start) >= createdAt && Number(candle.start) < horizonEnd)
-    .sort((a, b) => Number(a.start) - Number(b.start));
-  if (!rows.length) return { outcomeStatus: "OPEN", ambiguous: false, rawResultR: null, splitResultR: null, resultR: null };
+  if (!finite(evaluatedAt)) {
+    return { outcomeStatus: "INVALIDATED", dataComplete: true, ambiguous: false, rawResultR: null, splitResultR: null, resultR: null };
+  }
+  const evaluatedTime = Number(evaluatedAt);
+  if (!(candleIntervalMs > 0) || evaluatedTime < horizonEnd) {
+    return pendingOutcome(horizonHours, evaluatedAt, "HORIZON_NOT_COMPLETE");
+  }
+  const coverage = coveredCandles(candles, { createdAt, horizonEnd, evaluatedAt: evaluatedTime, candleIntervalMs });
+  if (!coverage.complete) return pendingOutcome(horizonHours, evaluatedAt, coverage.reason, coverage.rows.length);
+  const rows = coverage.rows;
 
   const sign = direction === "LONG" ? 1 : -1;
   const rr1 = sign * (target1 - entry) / risk;
@@ -90,6 +142,7 @@ export function evaluateSetupOutcome(setup, candles = [], { horizonHours = 24, e
     const closeR = sign * (closePrice24h - entry) / risk;
     rawResultR = closeR;
     splitResultR = t1Hit ? 0.5 * rr1 + 0.5 * closeR : closeR;
+    if (t1Hit) outcomeStatus = "T1_HIT";
   }
   const mfeR = sign * (mfePrice - entry) / risk;
   const maeR = sign * (maePrice - entry) / risk;
@@ -113,6 +166,9 @@ export function evaluateSetupOutcome(setup, candles = [], { horizonHours = 24, e
     splitResultR,
     resultR: splitResultR,
     outcomeStatus,
+    dataComplete: true,
+    coverageReason: null,
+    candleCount: rows.length,
     ambiguous,
     ambiguityReason,
   };
