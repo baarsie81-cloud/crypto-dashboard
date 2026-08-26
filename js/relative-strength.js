@@ -54,7 +54,7 @@ function breakoutContext(candles, direction, atrValue) {
   return { breakoutLevel, breakoutClosed, acceptanceConfirmed, lastClose: closes.at(-1) };
 }
 
-function planFromBreakout(direction, context, atrValue, targetRR2 = 2.7) {
+function planFromBreakout(direction, context, atrValue, targetRR2 = 2.7, type = "RELATIVE_STRENGTH_CONTINUATION") {
   if (!context?.breakoutClosed || !context.acceptanceConfirmed) return null;
   const atr = Number(atrValue);
   const entry = Number(context.lastClose);
@@ -64,7 +64,7 @@ function planFromBreakout(direction, context, atrValue, targetRR2 = 2.7) {
   const risk = Math.abs(entry - stop);
   if (!(risk > 0)) return null;
   return {
-    type: "RELATIVE_STRENGTH_CONTINUATION",
+    type,
     entry,
     entryLow: direction === "LONG" ? context.breakoutLevel : entry - atr * 0.15,
     entryHigh: direction === "LONG" ? entry + atr * 0.15 : context.breakoutLevel,
@@ -74,7 +74,63 @@ function planFromBreakout(direction, context, atrValue, targetRR2 = 2.7) {
     rr1: 1.5,
     rr2: targetRR2,
     confirmed: true,
-    waitFor: "Uitbraak gesloten en acceptatie buiten de zone bevestigd; wacht op een uitvoerbare entry zonder de koers te jagen.",
+    waitFor: type === "MOMENTUM_ACCEPTANCE"
+      ? "Momentum Acceptance bevestigd: uitbraak gesloten, prijsacceptatie en volume bevestigd; entry alleen zolang actuele R/R en chase-gate groen blijven."
+      : "Uitbraak gesloten en acceptatie buiten de zone bevestigd; wacht op een uitvoerbare entry zonder de koers te jagen.",
+  };
+}
+
+export function evaluateMomentumAcceptance({
+  direction,
+  coinCandles = [],
+  atrValue,
+  volumeRatio,
+  openInterestChangePct,
+  fundingPctPerHour,
+  executionScore,
+  targetRR2 = 2.7,
+  minimumVolumeRatio = 1.15,
+  minimumOiChangePct = 0,
+  maximumOiChangePct = 15,
+  maximumFundingPctPerHour = STRATEGY_LIMITS.relativeStrengthMaxAdverseFundingPctPerHour,
+  now = Date.now(),
+} = {}) {
+  const reasons = [];
+  if (!["LONG", "SHORT"].includes(direction)) reasons.push("Geen geldige richting voor Momentum Acceptance");
+  if (Number(volumeRatio) < minimumVolumeRatio) reasons.push("Volume-expansie ontbreekt voor Momentum Acceptance");
+  if (Number(executionScore) < STRATEGY_LIMITS.opportunityMinExecutionScore) reasons.push("Execution/liquiditeit is onvoldoende");
+
+  const oiAvailable = finite(openInterestChangePct);
+  if (oiAvailable) {
+    const oi = Number(openInterestChangePct);
+    if (oi < minimumOiChangePct) reasons.push("Open interest ondersteunt Momentum Acceptance niet");
+    if (oi > maximumOiChangePct) reasons.push("Open interest loopt te explosief op; overheating-risico");
+  }
+
+  const fundingAvailable = finite(fundingPctPerHour);
+  const funding = fundingAvailable ? Number(fundingPctPerHour) : null;
+  if (fundingAvailable && direction === "LONG" && funding > maximumFundingPctPerHour) reasons.push("Funding is oververhit voor LONG");
+  if (fundingAvailable && direction === "SHORT" && funding < -maximumFundingPctPerHour) reasons.push("Funding is oververhit voor SHORT");
+
+  const closed = closedCandles(coinCandles, TIMEFRAMES["60"].milliseconds, now);
+  const breakout = breakoutContext(closed, direction, atrValue);
+  if (!breakout?.breakoutClosed) reasons.push("Breakout/breakdown is niet overtuigend gesloten");
+  if (!breakout?.acceptanceConfirmed) reasons.push("Prijsacceptatie buiten de zone ontbreekt");
+  const plan = planFromBreakout(direction, breakout, atrValue, targetRR2, "MOMENTUM_ACCEPTANCE");
+  if ((Number(plan?.rr2) || 0) < STRATEGY_LIMITS.opportunityMinRR2) reasons.push("R/R naar T2 is lager dan 2,5");
+
+  return {
+    eligible: reasons.length === 0,
+    setupType: "MOMENTUM_ACCEPTANCE",
+    reasons,
+    volumeRatio: Number(volumeRatio),
+    openInterestChangePct: oiAvailable ? Number(openInterestChangePct) : null,
+    oiConfirmation: oiAvailable ? Number(openInterestChangePct) >= minimumOiChangePct && Number(openInterestChangePct) <= maximumOiChangePct : null,
+    fundingPctPerHour: funding,
+    breakoutClosed: breakout?.breakoutClosed === true,
+    acceptanceConfirmed: breakout?.acceptanceConfirmed === true,
+    breakoutLevel: breakout?.breakoutLevel ?? null,
+    plan,
   };
 }
 
