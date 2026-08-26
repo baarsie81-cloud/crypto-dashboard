@@ -1,21 +1,32 @@
 export const CORE_SYMBOLS = Object.freeze(["PF_XBTUSD", "PF_ETHUSD"]);
 export const TRADE_UNIVERSE_LIMIT = 15;
+export const HIGH_BETA_UNIVERSE_LIMIT = 20;
 export const ALT_MIN_CONFIDENCE = 80;
 export const ALT_MIN_SETUP_CONFIDENCE = 85;
 export const ALT_MIN_RR = 2.5;
 
+const HIGH_BETA_EXCLUDED_SYMBOLS = new Set([
+  "PF_XBTUSD", "PF_ETHUSD", "PF_SOLUSD", "PF_XRPUSD", "PF_ADAUSD", "PF_DOGEUSD",
+  "PF_LINKUSD", "PF_BNBUSD", "PF_AVAXUSD", "PF_SUIUSD", "PF_HYPEUSD", "PF_DOTUSD",
+  "PF_LTCUSD", "PF_XMRUSD", "PF_XLMUSD", "PF_AAVEUSD", "PF_BCHUSD", "PF_TRXUSD",
+]);
+
 const finite = (value) => Number.isFinite(Number(value));
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+
+function tickerSpreadPct(ticker = {}) {
+  if (finite(ticker.spreadPct)) return Math.max(0, Number(ticker.spreadPct));
+  if (Number(ticker.bid) > 0 && Number(ticker.ask) > 0) {
+    return ((Number(ticker.ask) - Number(ticker.bid)) / ((Number(ticker.ask) + Number(ticker.bid)) / 2)) * 100;
+  }
+  return 0.2;
+}
 
 function liquidityScore(market, ticker = {}) {
   if (!market?.tradeable || ticker.suspended || ticker.postOnly) return -Infinity;
   const volume = Math.max(0, Number(ticker.volumeQuote) || 0);
   const oi = Math.max(0, Number(ticker.openInterest) || 0) * Math.max(0, Number(ticker.markPrice || ticker.lastPrice) || 0);
-  const spread = finite(ticker.spreadPct)
-    ? Math.max(0, Number(ticker.spreadPct))
-    : Number(ticker.bid) > 0 && Number(ticker.ask) > 0
-      ? ((Number(ticker.ask) - Number(ticker.bid)) / ((Number(ticker.ask) + Number(ticker.bid)) / 2)) * 100
-      : 0.2;
+  const spread = tickerSpreadPct(ticker);
   const depth = Math.max(0, Number(ticker.validatedDepthUSD) || 0);
   const slippage = Math.max(0, Number(ticker.buySlippagePct) || 0, Number(ticker.sellSlippagePct) || 0);
   return Math.log10(volume + 1) * 35
@@ -36,6 +47,28 @@ export function selectTradeUniverse(markets = [], tickers = new Map(), limit = T
     .sort((a, b) => b.score - a.score || a.market.symbol.localeCompare(b.market.symbol))
     .map((row) => row.market);
   return [...core, ...ranked].slice(0, Math.max(core.length, limit));
+}
+
+export function selectHighBetaUniverse(markets = [], tickers = new Map(), limit = HIGH_BETA_UNIVERSE_LIMIT) {
+  return markets
+    .filter((market) => !HIGH_BETA_EXCLUDED_SYMBOLS.has(market.symbol))
+    .map((market) => {
+      const ticker = tickers.get(market.symbol) || {};
+      const volume = Math.max(0, Number(ticker.volumeQuote) || 0);
+      const oiNotional = Math.max(0, Number(ticker.openInterest) || 0) * Math.max(0, Number(ticker.markPrice || ticker.lastPrice) || 0);
+      const spread = tickerSpreadPct(ticker);
+      const change = Math.abs(Number(ticker.change24h) || Number(ticker.change) || 0);
+      const eligible = market.tradeable === true && ticker.suspended !== true && ticker.postOnly !== true
+        && volume >= 250_000 && spread <= 0.25;
+      const score = eligible
+        ? Math.log10(volume + 1) * 28 + Math.log10(oiNotional + 1) * 12 + clamp(change, 0, 50) * 2 - spread * 120
+        : -Infinity;
+      return { market, score };
+    })
+    .filter((row) => Number.isFinite(row.score))
+    .sort((a, b) => b.score - a.score || a.market.symbol.localeCompare(b.market.symbol))
+    .slice(0, Math.max(1, Math.min(HIGH_BETA_UNIVERSE_LIMIT, Number(limit) || HIGH_BETA_UNIVERSE_LIMIT)))
+    .map((row) => row.market);
 }
 
 export function isCoreSymbol(symbol) { return CORE_SYMBOLS.includes(symbol); }
