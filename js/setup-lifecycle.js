@@ -84,6 +84,8 @@ export function buildSetupRecord({ signal, classification, ticker = {}, market =
     metadata: {
       classificationReasons: classification.reasons,
       gateReasons: classification.gateReasons,
+      triggerSource: classification.triggerSource || "CLASSIC",
+      momentumAcceptance: classification.momentumAcceptance || null,
       relativeStrength: classification.relativeStrength || null,
       chase: classification.chase || null,
     },

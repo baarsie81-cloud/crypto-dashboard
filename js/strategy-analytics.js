@@ -37,3 +37,25 @@ export function summarizeStrategyRows(rows = []) {
   });
   return { tierCounts, bands, minimumSample: STRATEGY_LIMITS.minimumAnalyticsSample };
 }
+
+export function summarizeHighBetaRows(rows = []) {
+  const evaluated = rows.filter((row) => ![null, undefined].includes(row.result_r) || row.ambiguous === true);
+  const selected = evaluated.filter((row) => ![null, undefined].includes(row.result_r));
+  const eligibleRows = rows.filter((row) => row.eligible === true);
+  const eligibleEvaluated = selected.filter((row) => row.eligible === true);
+  return {
+    setupCount: rows.length,
+    eligibleSetupCount: eligibleRows.length,
+    sampleSize: selected.length,
+    eligibleSampleSize: eligibleEvaluated.length,
+    sufficientSample: eligibleEvaluated.length >= STRATEGY_LIMITS.minimumAnalyticsSample,
+    expectancyR: average(eligibleEvaluated, (row) => row.split_result_r ?? row.result_r),
+    winRate: rate(eligibleEvaluated, (row) => Number(row.split_result_r ?? row.result_r) > 0),
+    t1HitRate: rate(eligibleEvaluated, (row) => row.t1_hit === true),
+    t2HitRate: rate(eligibleEvaluated, (row) => row.t2_hit === true),
+    stopRate: rate(eligibleEvaluated, (row) => row.stop_hit === true),
+    averageMfeR: average(eligibleEvaluated, (row) => row.mfe_r),
+    averageMaeR: average(eligibleEvaluated, (row) => row.mae_r),
+    ambiguousCount: evaluated.filter((row) => row.ambiguous === true).length,
+  };
+}

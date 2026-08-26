@@ -1,4 +1,5 @@
 export const STRATEGY_VERSION = "prime-opportunity-shadow-v1";
+export const HIGH_BETA_STRATEGY_VERSION = "high-beta-momentum-v1";
 
 export const SIGNAL_TIERS = Object.freeze({
   PRIME: "PRIME",
@@ -9,6 +10,7 @@ export const SIGNAL_TIERS = Object.freeze({
 export const RISK_CLASSES = Object.freeze({
   PRIME: 1,
   OPPORTUNITY: 0.25,
+  HIGH_BETA: 0.05,
   SHADOW: 0,
 });
 
@@ -29,6 +31,8 @@ export const STRATEGY_LIMITS = Object.freeze({
 
 export const DEFAULT_STRATEGY_FLAGS = Object.freeze({
   opportunitySignalsEnabled: true,
+  momentumAcceptanceEnabled: true,
+  highBetaSignalsEnabled: true,
   shadowTrackingEnabled: true,
 });
 
@@ -42,6 +46,14 @@ export function strategyFlags(source = {}) {
     opportunitySignalsEnabled: enabled(
       source.OPPORTUNITY_SIGNALS_ENABLED ?? source.opportunitySignalsEnabled,
       DEFAULT_STRATEGY_FLAGS.opportunitySignalsEnabled,
+    ),
+    momentumAcceptanceEnabled: enabled(
+      source.MOMENTUM_ACCEPTANCE_ENABLED ?? source.momentumAcceptanceEnabled,
+      DEFAULT_STRATEGY_FLAGS.momentumAcceptanceEnabled,
+    ),
+    highBetaSignalsEnabled: enabled(
+      source.HIGH_BETA_SIGNALS_ENABLED ?? source.highBetaSignalsEnabled,
+      DEFAULT_STRATEGY_FLAGS.highBetaSignalsEnabled,
     ),
     shadowTrackingEnabled: enabled(
       source.SHADOW_TRACKING_ENABLED ?? source.shadowTrackingEnabled,
