@@ -20,9 +20,9 @@ function summarize(rows) {
       t1HitRate: rate(closed, (row) => row.t1_hit === true),
       t2HitRate: rate(closed, (row) => row.t2_hit === true),
       stopRate: rate(closed, (row) => row.stop_hit === true),
-      netResultEur: closed.reduce((sum, row) => sum + (Number(row.net_result_eur) || 0), 0),
-      feesEur: closed.reduce((sum, row) => sum + (Number(row.fees_eur) || 0), 0),
-      modeledSlippageEur: closed.reduce((sum, row) => sum + (Number(row.slippage_eur) || 0), 0),
+      netResultUsd: closed.reduce((sum, row) => sum + (Number(row.net_result_usd) || 0), 0),
+      feesUsd: closed.reduce((sum, row) => sum + (Number(row.fees_usd) || 0), 0),
+      modeledSlippageUsd: closed.reduce((sum, row) => sum + (Number(row.slippage_usd) || 0), 0),
     };
   }
   const closed = rows.filter((row) => row.status === "CLOSED" && row.result_r !== null);
@@ -32,7 +32,7 @@ function summarize(rows) {
     closed: closed.length,
     expectancyR: avg(closed, (row) => row.result_r),
     winRate: rate(closed, (row) => Number(row.result_r) > 0),
-    netResultEur: closed.reduce((sum, row) => sum + (Number(row.net_result_eur) || 0), 0),
+    netResultUsd: closed.reduce((sum, row) => sum + (Number(row.net_result_usd) || 0), 0),
     lanes,
   };
 }
