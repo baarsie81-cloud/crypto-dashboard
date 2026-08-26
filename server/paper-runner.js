@@ -14,7 +14,7 @@ async function fetchJson(path, { fetchImpl = fetch, parameters = {}, timeout = 1
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeout);
   try {
-    const response = await fetchImpl(url, { signal: controller.signal, headers: { accept: "application/json", "user-agent": "crypto-dashboard-paper-runner/1.0" } });
+    const response = await fetchImpl(url, { signal: controller.signal, headers: { accept: "application/json", "user-agent": "crypto-dashboard-paper-runner/1.1" } });
     if (!response.ok) throw new Error(`Kraken HTTP ${response.status}`);
     return response.json();
   } finally {
@@ -39,7 +39,7 @@ async function backfillMissingPaperTrades(sql, limit = 10) {
       alert: row.payload,
       createdAt: row.sent_at,
     });
-    if (trade) created.push({ id: trade.id, sourceAlertKey: row.alert_key, symbol: trade.symbol, lane: trade.lane });
+    if (trade) created.push({ id: trade.id, sourceAlertKey: row.alert_key, symbol: trade.symbol, lane: trade.lane, orderType: trade.order_type });
   }
   return created;
 }
@@ -48,10 +48,7 @@ async function fetchOneMinuteCandles(symbol, fromMs, toMs, fetchImpl) {
   if (!(toMs > fromMs)) return [];
   const payload = await fetchJson(`/api/charts/v1/trade/${symbol}/1m`, {
     fetchImpl,
-    parameters: {
-      from: Math.floor(fromMs / 1000),
-      to: Math.ceil(toMs / 1000),
-    },
+    parameters: { from: Math.floor(fromMs / 1000), to: Math.ceil(toMs / 1000) },
   });
   return (payload.candles || []).map(normalizeCandle).sort((a, b) => a.start - b.start);
 }
@@ -72,7 +69,7 @@ function closeAtHorizon(trade, candles, horizonAt) {
   if (!(rawExit > 0)) return { trade, event: null };
   const payloadPaper = trade.payload?.paper || {};
   const slipPct = Number(payloadPaper.modeledSlippagePct ?? PAPER_DEFAULTS.fallbackSlippagePct);
-  const feeRate = Number(payloadPaper.takerFeeRate ?? PAPER_DEFAULTS.takerFeeRate);
+  const feeRate = Number(payloadPaper.exitFeeRate ?? PAPER_DEFAULTS.takerFeeRate);
   const exit = applyExitSlippage(rawExit, trade.direction, slipPct);
   const totalQty = Number(trade.position_qty);
   const remainingQty = trade.t1_hit ? totalQty * (1 - PAPER_DEFAULTS.tp1Fraction) : totalQty;
@@ -84,15 +81,9 @@ function closeAtHorizon(trade, candles, horizonAt) {
   const eventAt = new Date(horizonAt).toISOString();
   return {
     trade: {
-      ...trade,
-      status: "CLOSED",
-      close_price: exit,
-      closed_at: eventAt,
-      close_reason: "CLOSED_24H",
-      gross_result_usd: Number(gross.toFixed(4)),
-      fees_usd: Number(fees.toFixed(4)),
-      slippage_usd: Number(slippage.toFixed(4)),
-      net_result_usd: Number(net.toFixed(4)),
+      ...trade,status: "CLOSED",close_price: exit,closed_at: eventAt,close_reason: "CLOSED_24H",
+      gross_result_usd: Number(gross.toFixed(4)),fees_usd: Number(fees.toFixed(4)),
+      slippage_usd: Number(slippage.toFixed(4)),net_result_usd: Number(net.toFixed(4)),
       result_r: risk > 0 ? Number((net / risk).toFixed(4)) : null,
     },
     event: { eventType: "CLOSED_24H", eventAt, price: exit, quantity: remainingQty },
@@ -107,20 +98,31 @@ export async function runPaperExecution({ sql, fetchImpl = fetch, now = Date.now
     try {
       const createdMs = Date.parse(source.created_at);
       const horizonAt = createdMs + HORIZON;
-      const lastEvaluatedMs = Date.parse(source.last_evaluated_at || source.fill_at || source.created_at);
+      const lastEvaluatedMs = Date.parse(source.last_evaluated_at || source.created_at);
       const evaluationEnd = Math.min(now, horizonAt);
       const fromMs = Math.max(createdMs, Number.isFinite(lastEvaluatedMs) ? lastEvaluatedMs - MINUTE : createdMs);
       const candles = await fetchOneMinuteCandles(source.symbol, fromMs, evaluationEnd, fetchImpl);
       const simulated = simulatePaperTrade(source, candles);
       let nextTrade = simulated.trade;
       const events = [...simulated.events];
-      if (now >= horizonAt && nextTrade.status === "OPEN") {
+
+      if (now >= horizonAt && nextTrade.status === "PENDING") {
+        nextTrade = {
+          ...nextTrade,status: "CANCELLED",closed_at: new Date(horizonAt).toISOString(),
+          close_reason: "EXPIRED_UNFILLED",net_result_usd: 0,result_r: 0,
+        };
+        events.push({ eventType: "EXPIRED", eventAt: nextTrade.closed_at, price: null, quantity: Number(nextTrade.position_qty) });
+      } else if (now >= horizonAt && nextTrade.status === "OPEN") {
         const closed = closeAtHorizon(nextTrade, candles, horizonAt);
         nextTrade = closed.trade;
         if (closed.event) events.push(closed.event);
       }
+
       const saved = await updatePaperTrade(sql, nextTrade, events, new Date(now).toISOString());
-      results.push({ id: saved.id, symbol: saved.symbol, lane: saved.lane, status: saved.status, resultR: saved.result_r === null ? null : Number(saved.result_r), events: events.map((event) => event.eventType) });
+      results.push({
+        id: saved.id,symbol: saved.symbol,lane: saved.lane,orderType: saved.order_type,status: saved.status,
+        resultR: saved.result_r === null ? null : Number(saved.result_r),events: events.map((event) => event.eventType),
+      });
     } catch (error) {
       results.push({ id: source.id, symbol: source.symbol, lane: source.lane, status: "ERROR", error: error.message });
     }
