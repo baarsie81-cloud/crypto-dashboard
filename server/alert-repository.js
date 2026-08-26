@@ -1,3 +1,5 @@
+import { createPaperTradeFromAlert } from "./paper-repository.js";
+
 export async function recordSentTradeAlert(sql, { alertKey, symbol, direction, score, tradeQuality, setupFingerprint, payload, sentAt } = {}) {
   if (!alertKey || !symbol || !direction || !setupFingerprint || !payload) throw new Error("Ongeldig alertrecord");
   const rows = await sql.query(`
@@ -16,5 +18,17 @@ export async function recordSentTradeAlert(sql, { alertKey, symbol, direction, s
     JSON.stringify(payload),
     sentAt || new Date().toISOString(),
   ]);
-  return rows[0] || null;
+  const saved = rows[0] || null;
+  if (saved) {
+    try {
+      await createPaperTradeFromAlert(sql, {
+        sourceAlertKey: alertKey,
+        alert: payload,
+        createdAt: saved.sent_at,
+      });
+    } catch (error) {
+      console.warn("Paper order kon niet direct worden aangemaakt; backfill herstelt dit later", error);
+    }
+  }
+  return saved;
 }
