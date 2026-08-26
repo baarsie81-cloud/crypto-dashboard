@@ -24,7 +24,7 @@ export async function recordHighBetaSetup(sql, record) {
       breakout_level,eligible,status,reasons,metadata,dedupe_key,strategy_version
     ) VALUES (
       $1,$1,$2,$3,$4,$5,0.05,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,
-      $19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33::jsonb,$34::jsonb,$35,$36
+      $19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32::jsonb,$33::jsonb,$34,$35
     )
     ON CONFLICT (dedupe_key) WHERE status IN ('WATCH','ACTIVE','CHASE_BLOCKED')
     DO UPDATE SET
