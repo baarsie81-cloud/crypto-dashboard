@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildPaperOrderFromAlert, simulatePaperTrade } from "../js/paper-execution.js";
+import { buildPaperOrderFromAlert, paperOrderType, simulatePaperTrade } from "../js/paper-execution.js";
 
 function alert(tier = "PRIME", overrides = {}) {
   return {
@@ -31,6 +31,12 @@ test("paper sizing volgt PRIME 1R, OPPORTUNITY 0.25R en HIGH_BETA 0.05R", () => 
   assert.ok(prime.positionQty > opportunity.positionQty);
   assert.ok(opportunity.positionQty > highBeta.positionQty);
   assert.ok(prime.notionalUsd <= 3000);
+});
+
+test("ordertype blijft deterministisch per trigger-lane", () => {
+  assert.equal(paperOrderType(alert("PRIME")), "MARKET");
+  assert.equal(paperOrderType(alert("OPPORTUNITY", { setupType: "BREAKOUT_RETEST", triggerSource: "CLASSIC" })), "LIMIT");
+  assert.equal(paperOrderType(alert("HIGH_BETA", { setupType: "BREAKOUT_RETEST", triggerSource: "CLASSIC" })), "MARKET");
 });
 
 test("momentum/high-beta paper order gebruikt MARKET met fee en slippage", () => {
