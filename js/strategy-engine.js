@@ -51,7 +51,7 @@ export function evaluateChase({ direction, currentPrice, plan, minimumRR2 = STRA
   };
 }
 
-function opportunityGate(signal, { symbol, btcSignal, currentPrice, relativeStrength } = {}) {
+function opportunityGate(signal, { symbol, btcSignal, currentPrice, relativeStrength, momentumAcceptance } = {}) {
   const reasons = [];
   const score = Number(signal?.score);
   const direction = ["LONG", "SHORT"].includes(signal?.status) ? signal.status : signal?.bias;
@@ -73,7 +73,16 @@ function opportunityGate(signal, { symbol, btcSignal, currentPrice, relativeStre
   const btcOpposingPrime = !isCoreSymbol(symbol) && hasOpposingBtcPrime({ ...signal, bias: direction }, btcSignal);
   if (btcOpposingPrime) reasons.push("Tegengestelde BTC 85+ PRIME setup is actief");
 
-  const basePlan = relativeStrength?.eligible ? relativeStrength.plan : signal?.plan;
+  const triggerSource = relativeStrength?.eligible
+    ? "RELATIVE_STRENGTH_CONTINUATION"
+    : momentumAcceptance?.eligible
+      ? "MOMENTUM_ACCEPTANCE"
+      : "CLASSIC";
+  const basePlan = relativeStrength?.eligible
+    ? relativeStrength.plan
+    : momentumAcceptance?.eligible
+      ? momentumAcceptance.plan
+      : signal?.plan;
   if (!basePlan?.confirmed) reasons.push(basePlan?.waitFor || "Technische trigger is niet bevestigd");
   if (Number(basePlan?.rr2) < STRATEGY_LIMITS.opportunityMinRR2) reasons.push("R/R naar T2 is lager dan 2,5");
   const chase = evaluateChase({ direction, currentPrice, plan: basePlan });
@@ -87,6 +96,8 @@ function opportunityGate(signal, { symbol, btcSignal, currentPrice, relativeStre
     chase,
     btcOpposingPrime,
     relativeStrength: relativeStrength || null,
+    momentumAcceptance: momentumAcceptance || null,
+    triggerSource,
   };
 }
 
@@ -95,6 +106,7 @@ export function classifySignal(signal, {
   btcSignal = null,
   currentPrice = signal?.states?.["60"]?.close,
   relativeStrength = null,
+  momentumAcceptance = null,
   flags = strategyFlags(),
 } = {}) {
   const prime = passes85TradeGate(signal, { symbol, btcSignal });
@@ -112,10 +124,11 @@ export function classifySignal(signal, {
       strategyVersion: STRATEGY_VERSION,
       experimental: false,
       btcOpposingPrime: false,
+      triggerSource: "CLASSIC",
     };
   }
 
-  const opportunity = opportunityGate(signal, { symbol, btcSignal, currentPrice, relativeStrength });
+  const opportunity = opportunityGate(signal, { symbol, btcSignal, currentPrice, relativeStrength, momentumAcceptance });
   if (flags.opportunitySignalsEnabled && opportunity.eligible) {
     return {
       signalTier: SIGNAL_TIERS.OPPORTUNITY,
@@ -132,6 +145,8 @@ export function classifySignal(signal, {
       btcOpposingPrime: opportunity.btcOpposingPrime,
       chase: opportunity.chase,
       relativeStrength: opportunity.relativeStrength,
+      momentumAcceptance: opportunity.momentumAcceptance,
+      triggerSource: opportunity.triggerSource,
     };
   }
 
@@ -153,6 +168,8 @@ export function classifySignal(signal, {
       btcOpposingPrime: opportunity.btcOpposingPrime,
       chase: opportunity.chase,
       relativeStrength: opportunity.relativeStrength,
+      momentumAcceptance: opportunity.momentumAcceptance,
+      triggerSource: opportunity.triggerSource,
     };
   }
 
@@ -169,6 +186,7 @@ export function classifySignal(signal, {
     strategyVersion: STRATEGY_VERSION,
     experimental: false,
     btcOpposingPrime: opportunity.btcOpposingPrime,
+    triggerSource: opportunity.triggerSource,
   };
 }
 
@@ -212,6 +230,7 @@ export function buildAlertPayload({ signal, classification, ticker = {}, market 
     rrTarget2: Number(plan.rr2),
     trigger: plan.waitFor,
     triggerConfirmed: plan.confirmed === true,
+    triggerSource: classification.triggerSource || "CLASSIC",
     executionScore: Number(signal.executionScore),
     btcRegime: signal.marketRegime,
     observedAt: new Date(observedAt).toISOString(),
@@ -223,6 +242,15 @@ export function buildAlertPayload({ signal, classification, ticker = {}, market 
       volumeRatio: classification.relativeStrength.volumeRatio,
       oiConfirmation: classification.relativeStrength.oiConfirmation,
       fundingPctPerHour: classification.relativeStrength.fundingPctPerHour,
+    } : null;
+    payload.momentumAcceptance = classification.momentumAcceptance ? {
+      volumeRatio: classification.momentumAcceptance.volumeRatio,
+      openInterestChangePct: classification.momentumAcceptance.openInterestChangePct,
+      oiConfirmation: classification.momentumAcceptance.oiConfirmation,
+      fundingPctPerHour: classification.momentumAcceptance.fundingPctPerHour,
+      breakoutClosed: classification.momentumAcceptance.breakoutClosed,
+      acceptanceConfirmed: classification.momentumAcceptance.acceptanceConfirmed,
+      breakoutLevel: classification.momentumAcceptance.breakoutLevel,
     } : null;
   }
   return payload;
