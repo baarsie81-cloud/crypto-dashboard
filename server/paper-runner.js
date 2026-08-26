@@ -76,11 +76,11 @@ function closeAtHorizon(trade, candles, horizonAt) {
   const exit = applyExitSlippage(rawExit, trade.direction, slipPct);
   const totalQty = Number(trade.position_qty);
   const remainingQty = trade.t1_hit ? totalQty * (1 - PAPER_DEFAULTS.tp1Fraction) : totalQty;
-  const gross = Number(trade.gross_result_eur || 0) + pnl(trade.direction, Number(trade.fill_price), exit, remainingQty);
-  const fees = Number(trade.fees_eur || 0) + Math.abs(exit * remainingQty) * feeRate;
-  const slippage = Number(trade.slippage_eur || 0) + Math.abs(exit - rawExit) * remainingQty;
+  const gross = Number(trade.gross_result_usd || 0) + pnl(trade.direction, Number(trade.fill_price), exit, remainingQty);
+  const fees = Number(trade.fees_usd || 0) + Math.abs(exit * remainingQty) * feeRate;
+  const slippage = Number(trade.slippage_usd || 0) + Math.abs(exit - rawExit) * remainingQty;
   const net = gross - fees;
-  const risk = Number(trade.actual_risk_eur);
+  const risk = Number(trade.actual_risk_usd);
   const eventAt = new Date(horizonAt).toISOString();
   return {
     trade: {
@@ -89,10 +89,10 @@ function closeAtHorizon(trade, candles, horizonAt) {
       close_price: exit,
       closed_at: eventAt,
       close_reason: "CLOSED_24H",
-      gross_result_eur: Number(gross.toFixed(4)),
-      fees_eur: Number(fees.toFixed(4)),
-      slippage_eur: Number(slippage.toFixed(4)),
-      net_result_eur: Number(net.toFixed(4)),
+      gross_result_usd: Number(gross.toFixed(4)),
+      fees_usd: Number(fees.toFixed(4)),
+      slippage_usd: Number(slippage.toFixed(4)),
+      net_result_usd: Number(net.toFixed(4)),
       result_r: risk > 0 ? Number((net / risk).toFixed(4)) : null,
     },
     event: { eventType: "CLOSED_24H", eventAt, price: exit, quantity: remainingQty },
