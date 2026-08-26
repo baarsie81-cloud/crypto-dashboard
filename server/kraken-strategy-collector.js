@@ -3,12 +3,21 @@ import { TIMEFRAMES } from "../js/constants.js";
 import { normalizeCandle, normalizeTicker, filterCryptoPerpetuals } from "../js/kraken.js";
 import { calculateBookExecution } from "../js/order-book.js";
 import { analyzeMarket, rankTurnover } from "../js/signals.js";
-import { selectTradeUniverse } from "../js/trade-universe.js";
-import { evaluateRelativeStrengthContinuation } from "../js/relative-strength.js";
-import { buildAlertPayload, classifySignal } from "../js/strategy-engine.js";
+import { selectHighBetaUniverse, selectTradeUniverse } from "../js/trade-universe.js";
+import { evaluateMomentumAcceptance, evaluateRelativeStrengthContinuation } from "../js/relative-strength.js";
+import { evaluateHighBetaMomentum, HIGH_BETA_LIMITS } from "../js/high-beta.js";
+import { buildAlertPayload, classifySignal, evaluateChase, hasOpposingBtcPrime } from "../js/strategy-engine.js";
 import { buildSetupRecord } from "../js/setup-lifecycle.js";
 import { evaluateSetupOutcome } from "../js/outcome-evaluator.js";
-import { strategyFlags } from "../js/strategy-config.js";
+import { HIGH_BETA_STRATEGY_VERSION, strategyFlags } from "../js/strategy-config.js";
+import { recordSentTradeAlert } from "./alert-repository.js";
+import {
+  highBetaDedupeKey,
+  dueHighBetaOutcomes,
+  invalidateUnseenHighBetaSetups,
+  recordHighBetaSetup,
+  saveHighBetaOutcome,
+} from "./high-beta-repository.js";
 import {
   acquireCollectorRunLock,
   dueOutcomes,
@@ -23,6 +32,8 @@ import {
 const KRAKEN_BASE = "https://futures.kraken.com";
 const MINUTE = 60 * 1000;
 const OUTCOME_BATCH_LIMIT = 3;
+const HIGH_BETA_OUTCOME_BATCH_LIMIT = 2;
+
 async function fetchJson(path, { fetchImpl = fetch, parameters = {}, timeout = 12_000 } = {}) {
   const url = new URL(path, KRAKEN_BASE);
   Object.entries(parameters).forEach(([key, value]) => {
@@ -31,7 +42,7 @@ async function fetchJson(path, { fetchImpl = fetch, parameters = {}, timeout = 1
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeout);
   try {
-    const response = await fetchImpl(url, { signal: controller.signal, headers: { accept: "application/json", "user-agent": "crypto-dashboard-strategy-collector/1.0" } });
+    const response = await fetchImpl(url, { signal: controller.signal, headers: { accept: "application/json", "user-agent": "crypto-dashboard-strategy-collector/1.1" } });
     if (!response.ok) throw new Error(`Kraken HTTP ${response.status}`);
     return response.json();
   } finally {
@@ -66,7 +77,18 @@ async function loadMarketData(market, ticker, options) {
   };
 }
 
-async function runPool(items, worker, concurrency = 4) {
+async function loadHighBetaMarketData(market, ticker, options) {
+  const [payload, book] = await Promise.all([
+    fetchJson(`/api/charts/v1/trade/${market.symbol}/1h`, { ...options, parameters: { count: 120 } }),
+    fetchJson("/derivatives/api/v3/orderbook", { ...options, parameters: { symbol: market.symbol } }),
+  ]);
+  return {
+    candles: (payload.candles || []).map(normalizeCandle).sort((a, b) => a.start - b.start),
+    ticker: { ...ticker, ...normalizeBook(book, market), receivedAt: options.observedAt, serverTime: options.observedAt },
+  };
+}
+
+async function runPool(items, worker, concurrency = 5) {
   let cursor = 0;
   const results = new Array(items.length);
   await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, async () => {
@@ -77,6 +99,50 @@ async function runPool(items, worker, concurrency = 4) {
     }
   }));
   return results;
+}
+
+async function persistCoreAlert(sql, alert, setup, observedAt) {
+  if (!alert || !setup?.dedupe_key) return false;
+  const saved = await recordSentTradeAlert(sql, {
+    alertKey: `core:${setup.dedupe_key}`,
+    symbol: alert.symbol,
+    direction: alert.direction,
+    score: alert.score,
+    tradeQuality: alert.quality,
+    setupFingerprint: setup.dedupe_key,
+    payload: alert,
+    sentAt: observedAt,
+  });
+  return Boolean(saved);
+}
+
+function highBetaAlertPayload(result, row, observedAt, chase) {
+  const plan = result.plan;
+  return {
+    header: "⚡ HIGH-BETA MOMENTUM CALL",
+    tier: "HIGH_BETA",
+    riskClass: "0.05R",
+    experimental: true,
+    symbol: row.market.symbol,
+    market: row.market.label || row.market.symbol,
+    direction: result.direction,
+    score: result.score,
+    quality: result.tradeQuality,
+    confidence: result.confidence,
+    setupConfidence: result.setupConfidence,
+    setupType: plan.type,
+    entry: { low: Number(plan.entryLow), high: Number(plan.entryHigh), reference: Number(plan.entry) },
+    stop: Number(plan.stop),
+    target1: Number(plan.target1),
+    target2: Number(plan.target2),
+    rrTarget2: Number(chase?.effectiveRR2 ?? plan.rr2),
+    trigger: plan.waitFor,
+    triggerConfirmed: true,
+    executionScore: result.executionScore,
+    metrics: result.metrics,
+    mainRisk: "High-beta perpetual: hogere wick-, slippage- en liquidation-risk; 0.05R is bewust klein.",
+    observedAt,
+  };
 }
 
 async function collectStrategySnapshotLocked({ sql, env, fetchImpl, now }) {
@@ -91,6 +157,7 @@ async function collectStrategySnapshotLocked({ sql, env, fetchImpl, now }) {
     const ticker = normalizeRestTicker(row, now);
     return [ticker.symbol, ticker];
   }));
+
   const limit = Math.max(2, Math.min(15, Number(env.STRATEGY_SCAN_LIMIT) || 15));
   const universe = selectTradeUniverse(markets, tickers, limit);
   const loaded = await runPool(universe, async (market) => {
@@ -135,11 +202,23 @@ async function collectStrategySnapshotLocked({ sql, env, fetchImpl, now }) {
       btcOpposingPrime: false,
       now,
     });
+    const momentumAcceptance = flags.momentumAcceptanceEnabled ? evaluateMomentumAcceptance({
+      direction,
+      coinCandles: row.candlesByTimeframe["60"],
+      atrValue: signal?.states?.["60"]?.atr14,
+      volumeRatio: signal?.states?.["60"]?.volumeRatio,
+      openInterestChangePct: oiChange,
+      fundingPctPerHour: Number(row.ticker.fundingRatePrediction) * 100,
+      executionScore: signal?.executionScore,
+      targetRR2: 2.7,
+      now,
+    }) : null;
     const classification = classifySignal(signal, {
       symbol: row.market.symbol,
       btcSignal,
       currentPrice: row.ticker.lastPrice || row.ticker.markPrice,
       relativeStrength,
+      momentumAcceptance,
       flags,
     });
     const record = buildSetupRecord({ signal, classification, ticker: row.ticker, market: row.market, observedAt: now });
@@ -147,9 +226,9 @@ async function collectStrategySnapshotLocked({ sql, env, fetchImpl, now }) {
     if (record) {
       const saved = await recordSetup(sql, record);
       seenDedupeKeys.push(record.dedupeKey);
-      setups.push({ id: saved.setup.id, symbol: record.symbol, tier: record.signalTier, promoted: Boolean(saved.transition) });
+      setups.push({ id: saved.setup.id, symbol: record.symbol, tier: record.signalTier, triggerSource: classification.triggerSource, promoted: Boolean(saved.transition) });
       const alert = buildAlertPayload({ signal, classification, ticker: row.ticker, market: row.market, observedAt: now });
-      if (alert) alerts.push(alert);
+      if (alert && await persistCoreAlert(sql, alert, saved.setup, observedAt)) alerts.push(alert);
     }
     await invalidateUnseenSetups(sql, { symbol: row.market.symbol, seenDedupeKeys, observedAt });
     await saveMarketSnapshot(sql, {
@@ -162,8 +241,129 @@ async function collectStrategySnapshotLocked({ sql, env, fetchImpl, now }) {
     });
   }
 
+  const highBeta = await collectHighBetaLane({ sql, env, flags, markets, tickers, btcCandles, btcSignal, validStandard: valid, fetchImpl, now, observedAt });
+  alerts.push(...highBeta.alerts);
+  errors.push(...highBeta.errors);
+
   const outcomes = await evaluateDueStrategyOutcomes({ sql, fetchImpl, now });
-  return { observedAt, scanned: valid.length, setups, alerts, outcomes, errors, flags };
+  const highBetaOutcomes = await evaluateDueHighBetaOutcomes({ sql, fetchImpl, now });
+  return {
+    observedAt,
+    scanned: valid.length,
+    setups,
+    alerts,
+    outcomes,
+    errors,
+    flags,
+    highBeta: { ...highBeta, outcomes: highBetaOutcomes },
+  };
+}
+
+async function collectHighBetaLane({ sql, env, flags, markets, tickers, btcCandles, btcSignal, validStandard, fetchImpl, now, observedAt }) {
+  if (!flags.highBetaSignalsEnabled) return { scanned: 0, setups: [], alerts: [], errors: [], universe: [] };
+  const highBetaLimit = Math.max(1, Math.min(20, Number(env.HIGH_BETA_SCAN_LIMIT) || 20));
+  const universe = selectHighBetaUniverse(markets, tickers, highBetaLimit);
+  const standardMap = new Map(validStandard.map((row) => [row.market.symbol, row]));
+  const loaded = await runPool(universe, async (market) => {
+    const existing = standardMap.get(market.symbol);
+    if (existing) return { market, ticker: existing.ticker, candles: existing.candlesByTimeframe["60"] };
+    const ticker = tickers.get(market.symbol) || {};
+    try {
+      return { market, ...(await loadHighBetaMarketData(market, ticker, { fetchImpl, observedAt: now })) };
+    } catch (error) {
+      return { market, ticker, error: error.message };
+    }
+  }, 6);
+
+  const valid = loaded.filter((row) => !row.error);
+  const setups = [];
+  const alerts = [];
+  const errors = loaded.filter((row) => row.error).map((row) => ({ symbol: row.market.symbol, lane: "HIGH_BETA", error: row.error }));
+
+  for (const row of valid) {
+    const oiChange = await openInterestChange(sql, row.market.symbol, row.ticker.openInterest, observedAt);
+    let result = evaluateHighBetaMomentum({
+      symbol: row.market.symbol,
+      market: row.market,
+      ticker: row.ticker,
+      coinCandles: row.candles,
+      btcCandles,
+      openInterestChangePct: oiChange,
+      btcOpposingPrime: false,
+      now,
+    });
+    const opposing = result.direction ? hasOpposingBtcPrime({ status: result.direction, bias: result.direction }, btcSignal) : false;
+    if (opposing) result = { ...result, eligible: false, reasons: [...new Set([...(result.reasons || []), "Tegengestelde BTC PRIME is actief"])] };
+
+    const seenDedupeKeys = [];
+    if (result.plan && result.direction && result.score >= 55) {
+      const chase = evaluateChase({
+        direction: result.direction,
+        currentPrice: row.ticker.lastPrice || row.ticker.markPrice,
+        plan: result.plan,
+        minimumRR2: HIGH_BETA_LIMITS.minRR2,
+      });
+      const alertEligible = result.eligible && !chase.blocked && chase.effectiveRR2 >= HIGH_BETA_LIMITS.minRR2;
+      const status = alertEligible ? "ACTIVE" : chase.blocked ? "CHASE_BLOCKED" : "WATCH";
+      const dedupeKey = highBetaDedupeKey({
+        symbol: row.market.symbol,
+        direction: result.direction,
+        setupType: result.plan.type,
+        breakoutLevel: result.metrics?.breakoutLevel,
+        tickSize: row.market.tickSize,
+      });
+      const saved = await recordHighBetaSetup(sql, {
+        observedAt,
+        symbol: row.market.symbol,
+        market: row.market.label || row.market.symbol,
+        direction: result.direction,
+        score: result.score,
+        tradeQuality: result.tradeQuality,
+        confidence: result.confidence,
+        setupConfidence: result.setupConfidence,
+        executionScore: result.executionScore,
+        plan: result.plan,
+        metrics: result.metrics,
+        eligible: alertEligible,
+        status,
+        reasons: [...new Set([...(result.reasons || []), ...(chase.reasons || [])])],
+        metadata: { chase, lane: "HIGH_BETA", btcOpposingPrime: opposing },
+        dedupeKey,
+        strategyVersion: HIGH_BETA_STRATEGY_VERSION,
+      });
+      seenDedupeKeys.push(dedupeKey);
+      setups.push({ id: saved.id, symbol: row.market.symbol, score: result.score, eligible: alertEligible, status });
+      if (alertEligible) {
+        const payload = highBetaAlertPayload(result, row, observedAt, chase);
+        const inserted = await recordSentTradeAlert(sql, {
+          alertKey: `high-beta:${dedupeKey}`,
+          symbol: row.market.symbol,
+          direction: result.direction,
+          score: result.score,
+          tradeQuality: result.tradeQuality,
+          setupFingerprint: dedupeKey,
+          payload,
+          sentAt: observedAt,
+        });
+        if (inserted) alerts.push(payload);
+      }
+    }
+    await invalidateUnseenHighBetaSetups(sql, {
+      symbol: row.market.symbol,
+      seenDedupeKeys,
+      observedAt,
+      strategyVersion: HIGH_BETA_STRATEGY_VERSION,
+    });
+    await saveMarketSnapshot(sql, {
+      symbol: row.market.symbol,
+      observedAt,
+      lastPrice: row.ticker.lastPrice || row.ticker.markPrice,
+      openInterest: row.ticker.openInterest,
+      fundingRate: row.ticker.fundingRatePrediction,
+      volume24h: row.ticker.volumeQuote,
+    });
+  }
+  return { scanned: valid.length, setups, alerts, errors, universe: universe.map((market) => market.symbol) };
 }
 
 export async function collectStrategySnapshot({ sql, env = process.env, fetchImpl = fetch, now = Date.now() } = {}) {
@@ -193,20 +393,39 @@ export async function collectStrategySnapshot({ sql, env = process.env, fetchImp
   }
 }
 
+async function fetchOutcomeCandles(setup, fetchImpl) {
+  const createdAt = Date.parse(setup.created_at);
+  const horizonEnd = createdAt + 24 * 60 * 60 * 1000;
+  const from = Math.floor(createdAt / MINUTE) * MINUTE / 1000;
+  const to = Math.ceil(horizonEnd / MINUTE) * MINUTE / 1000;
+  const payload = await fetchJson(`/api/charts/v1/trade/${setup.symbol}/1m`, { fetchImpl, parameters: { from, to } });
+  return (payload.candles || []).map(normalizeCandle).sort((a, b) => a.start - b.start);
+}
+
 export async function evaluateDueStrategyOutcomes({ sql, fetchImpl = fetch, now = Date.now() } = {}) {
-  // Een 24h-verzoek bevat circa 1.441 candles; houd de batch ruim binnen de functietijd.
   const due = await dueOutcomes(sql, now, OUTCOME_BATCH_LIMIT);
   const results = [];
   for (const setup of due) {
     try {
-      const createdAt = Date.parse(setup.created_at);
-      const horizonEnd = createdAt + 24 * 60 * 60 * 1000;
-      const from = Math.floor(createdAt / MINUTE) * MINUTE / 1000;
-      const to = Math.ceil(horizonEnd / MINUTE) * MINUTE / 1000;
-      const payload = await fetchJson(`/api/charts/v1/trade/${setup.symbol}/1m`, { fetchImpl, parameters: { from, to } });
-      const candles = (payload.candles || []).map(normalizeCandle).sort((a, b) => a.start - b.start);
+      const candles = await fetchOutcomeCandles(setup, fetchImpl);
       const outcome = evaluateSetupOutcome(setup, candles, { evaluatedAt: now, candleIntervalMs: MINUTE });
       if (outcome.dataComplete) await saveOutcome(sql, setup.id, outcome);
+      results.push({ setupId: setup.id, symbol: setup.symbol, status: outcome.outcomeStatus });
+    } catch (error) {
+      results.push({ setupId: setup.id, symbol: setup.symbol, status: "ERROR", error: error.message });
+    }
+  }
+  return results;
+}
+
+export async function evaluateDueHighBetaOutcomes({ sql, fetchImpl = fetch, now = Date.now() } = {}) {
+  const due = await dueHighBetaOutcomes(sql, now, HIGH_BETA_OUTCOME_BATCH_LIMIT);
+  const results = [];
+  for (const setup of due) {
+    try {
+      const candles = await fetchOutcomeCandles(setup, fetchImpl);
+      const outcome = evaluateSetupOutcome(setup, candles, { evaluatedAt: now, candleIntervalMs: MINUTE });
+      if (outcome.dataComplete) await saveHighBetaOutcome(sql, setup.id, outcome);
       results.push({ setupId: setup.id, symbol: setup.symbol, status: outcome.outcomeStatus });
     } catch (error) {
       results.push({ setupId: setup.id, symbol: setup.symbol, status: "ERROR", error: error.message });
