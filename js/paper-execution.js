@@ -1,6 +1,6 @@
 export const PAPER_EXECUTION_VERSION = "paper-execution-v1";
 export const PAPER_DEFAULTS = Object.freeze({
-  virtualEquityEur: 1000,
+  virtualEquityUsd: 1000,
   baseRiskPct: 1,
   maxNotionalMultiple: 3,
   takerFeeRate: 0.0005,
@@ -53,7 +53,7 @@ export function buildPaperOrderFromAlert(alert, options = {}) {
 
   const riskClass = laneRiskClass(alert);
   if (!riskClass) return null;
-  const virtualEquityEur = Number(options.virtualEquityEur) || PAPER_DEFAULTS.virtualEquityEur;
+  const virtualEquityUsd = Number(options.virtualEquityUsd) || PAPER_DEFAULTS.virtualEquityUsd;
   const baseRiskPct = Number(options.baseRiskPct) || PAPER_DEFAULTS.baseRiskPct;
   const maxNotionalMultiple = Number(options.maxNotionalMultiple) || PAPER_DEFAULTS.maxNotionalMultiple;
   const feeRate = Number(options.takerFeeRate) || PAPER_DEFAULTS.takerFeeRate;
@@ -62,23 +62,23 @@ export function buildPaperOrderFromAlert(alert, options = {}) {
   const riskPerUnit = Math.abs(modeledFill - stop);
   if (!(riskPerUnit > 0)) return null;
 
-  const riskBudgetEur = virtualEquityEur * (baseRiskPct / 100) * riskClass;
-  const rawQty = riskBudgetEur / riskPerUnit;
-  const maxNotionalEur = virtualEquityEur * maxNotionalMultiple;
-  const cappedQty = Math.min(rawQty, maxNotionalEur / modeledFill);
-  const notionalEur = cappedQty * modeledFill;
-  const actualRiskEur = cappedQty * riskPerUnit;
-  const entryFeeEur = notionalEur * feeRate;
-  const slippageEur = Math.abs(modeledFill - referenceEntry) * cappedQty;
+  const riskBudgetUsd = virtualEquityUsd * (baseRiskPct / 100) * riskClass;
+  const rawQty = riskBudgetUsd / riskPerUnit;
+  const maxNotionalUsd = virtualEquityUsd * maxNotionalMultiple;
+  const cappedQty = Math.min(rawQty, maxNotionalUsd / modeledFill);
+  const notionalUsd = cappedQty * modeledFill;
+  const actualRiskUsd = cappedQty * riskPerUnit;
+  const entryFeeUsd = notionalUsd * feeRate;
+  const slippageUsd = Math.abs(modeledFill - referenceEntry) * cappedQty;
 
   return {
     lane: alert.tier,
     direction,
     riskClass,
-    virtualEquityEur: round(virtualEquityEur, 2),
+    virtualEquityUsd: round(virtualEquityUsd, 2),
     baseRiskPct: round(baseRiskPct, 4),
-    riskBudgetEur: round(riskBudgetEur, 4),
-    actualRiskEur: round(actualRiskEur, 4),
+    riskBudgetUsd: round(riskBudgetUsd, 4),
+    actualRiskUsd: round(actualRiskUsd, 4),
     orderType: "MARKET",
     status: "OPEN",
     entryLow: round(entryLow),
@@ -90,9 +90,9 @@ export function buildPaperOrderFromAlert(alert, options = {}) {
     target2: round(target2),
     rrTarget2: finite(alert.rrTarget2) ? round(alert.rrTarget2, 4) : round(Math.abs(target2 - modeledFill) / riskPerUnit, 4),
     positionQty: round(cappedQty),
-    notionalEur: round(notionalEur, 2),
-    entryFeeEur: round(entryFeeEur, 4),
-    slippageEur: round(slippageEur, 4),
+    notionalUsd: round(notionalUsd, 2),
+    entryFeeUsd: round(entryFeeUsd, 4),
+    slippageUsd: round(slippageUsd, 4),
     modeledSlippagePct: round(slipPct, 6),
     takerFeeRate: feeRate,
     triggerSource: alert.triggerSource || alert.setupType || null,
@@ -128,9 +128,9 @@ export function simulatePaperTrade(trade, candles = [], options = {}) {
   const totalQty = n(trade.position_qty ?? trade.positionQty);
   const tp1Fraction = PAPER_DEFAULTS.tp1Fraction;
   let remainingQty = trade.t1_hit ? totalQty * (1 - tp1Fraction) : totalQty;
-  let gross = n(trade.gross_result_eur) || 0;
-  let fees = n(trade.fees_eur) || n(trade.entryFeeEur) || 0;
-  let slippage = n(trade.slippage_eur) || n(trade.slippageEur) || 0;
+  let gross = n(trade.gross_result_usd) || 0;
+  let fees = n(trade.fees_usd) || n(trade.entryFeeUsd) || 0;
+  let slippage = n(trade.slippage_usd) || n(trade.slippageUsd) || 0;
   let t1Hit = trade.t1_hit === true;
   let t2Hit = trade.t2_hit === true;
   let stopHit = trade.stop_hit === true;
@@ -185,7 +185,7 @@ export function simulatePaperTrade(trade, candles = [], options = {}) {
   }
 
   const net = gross - fees;
-  const actualRisk = n(trade.actual_risk_eur ?? trade.actualRiskEur);
+  const actualRisk = n(trade.actual_risk_usd ?? trade.actualRiskUsd);
   return {
     trade: {
       ...trade,
@@ -196,10 +196,10 @@ export function simulatePaperTrade(trade, candles = [], options = {}) {
       close_price: closePrice,
       close_reason: closeReason,
       closed_at: closedAt,
-      gross_result_eur: round(gross, 4),
-      fees_eur: round(fees, 4),
-      slippage_eur: round(slippage, 4),
-      net_result_eur: round(net, 4),
+      gross_result_usd: round(gross, 4),
+      fees_usd: round(fees, 4),
+      slippage_usd: round(slippage, 4),
+      net_result_usd: round(net, 4),
       result_r: actualRisk > 0 ? round(net / actualRisk, 4) : null,
     },
     events,
