@@ -21,7 +21,7 @@ export const STRATEGY_LIMITS = Object.freeze({
   shadowMaxScore: 84,
   opportunityMinConfidence: 75,
   opportunityMinSetupConfidence: 80,
-  opportunityMinRR2: 2.5,
+  opportunityMinRR2: 2.0,
   opportunityMinExecutionScore: 75,
   relativeStrengthMinVolumeRatio: 1.4,
   relativeStrengthMinOiChangePct: 0.25,
