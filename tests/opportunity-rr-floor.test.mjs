@@ -13,7 +13,7 @@ test("HIGH_BETA blijft ongewijzigd op 2.0R en 0.05R", () => {
   assert.equal(RISK_CLASSES.HIGH_BETA, 0.05);
 });
 
-test("scoregrenzen voor OPPORTUNITY blijven 82-84", () => {
+test("OPPORTUNITY is fallback voor iedere score vanaf 82 die PRIME niet haalt", () => {
   assert.equal(STRATEGY_LIMITS.opportunityMinScore, 82);
-  assert.equal(STRATEGY_LIMITS.opportunityMaxScore, 84);
+  assert.equal(STRATEGY_LIMITS.opportunityMaxScore, 100);
 });
