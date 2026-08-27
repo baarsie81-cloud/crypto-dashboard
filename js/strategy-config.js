@@ -16,9 +16,9 @@ export const RISK_CLASSES = Object.freeze({
 
 export const STRATEGY_LIMITS = Object.freeze({
   opportunityMinScore: 82,
-  opportunityMaxScore: 84,
+  opportunityMaxScore: 100,
   shadowMinScore: 78,
-  shadowMaxScore: 84,
+  shadowMaxScore: 100,
   opportunityMinConfidence: 75,
   opportunityMinSetupConfidence: 80,
   opportunityMinRR2: 2.0,
