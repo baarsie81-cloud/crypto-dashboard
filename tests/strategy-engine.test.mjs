@@ -38,12 +38,12 @@ test("OPPORTUNITY grensgates degraderen naar SHADOW", () => {
     signal({ tradeQuality: "B+" }),
     signal({ confidence: 74 }),
     signal({ setupConfidence: 79 }),
-    signal({ plan: { ...plan, rr2: 2.49, target2: 109.96 } }),
+    signal({ plan: { ...plan, rr2: 1.99, target2: 103.96 } }),
     signal({ executionScore: 74 }),
     signal({ spreadPct: null }),
   ];
   blocked.forEach((fixture) => assert.equal(classifySignal(fixture, { currentPrice: 100 }).signalTier, "SHADOW"));
-  assert.equal(classifySignal(signal({ plan: { ...plan, rr2: 2.5 } }), { currentPrice: 100 }).signalTier, "OPPORTUNITY");
+  assert.equal(classifySignal(signal({ plan: { ...plan, rr2: 2.0, target2: 108 } }), { currentPrice: 100 }).signalTier, "OPPORTUNITY");
 });
 
 test("tegengestelde BTC PRIME en een gechasede entry blokkeren Opportunity", () => {

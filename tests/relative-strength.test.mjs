@@ -23,7 +23,7 @@ test("Relative Strength Continuation vereist outperformance, volume, OI, funding
   const result = evaluateRelativeStrengthContinuation(context());
   assert.equal(result.eligible, true);
   assert.equal(result.plan.type, "RELATIVE_STRENGTH_CONTINUATION");
-  assert.ok(result.plan.rr2 >= 2.5);
+  assert.ok(result.plan.rr2 >= 2.0);
 });
 
 test("alleen sterke prijs zonder volume wordt geblokkeerd", () => {
@@ -41,8 +41,8 @@ test("ontbrekende OI is optioneel maar ontbrekende funding nooit", () => {
   assert.ok(withoutFunding.reasons.some((reason) => reason.includes("Fundingcontext")));
 });
 
-test("extreme funding, ontbrekende breakout-close en slechte R/R blokkeren", () => {
+test("extreme funding, ontbrekende breakout-close en R/R onder 2.0 blokkeren", () => {
   assert.equal(evaluateRelativeStrengthContinuation(context({ fundingPctPerHour: 0.06 })).eligible, false);
   assert.equal(evaluateRelativeStrengthContinuation(context({ coinCandles: candles({ breakout: false }) })).eligible, false);
-  assert.equal(evaluateRelativeStrengthContinuation(context({ targetRR2: 2.49 })).eligible, false);
+  assert.equal(evaluateRelativeStrengthContinuation(context({ targetRR2: 1.99 })).eligible, false);
 });
