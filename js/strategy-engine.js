@@ -56,7 +56,7 @@ function opportunityGate(signal, { symbol, btcSignal, currentPrice, relativeStre
   const score = Number(signal?.score);
   const direction = ["LONG", "SHORT"].includes(signal?.status) ? signal.status : signal?.bias;
   if (!["LONG", "SHORT"].includes(direction)) reasons.push("Geen geldige LONG/SHORT-richting");
-  if (score < STRATEGY_LIMITS.opportunityMinScore || score > STRATEGY_LIMITS.opportunityMaxScore) reasons.push("Score valt niet in 82–84");
+  if (score < STRATEGY_LIMITS.opportunityMinScore || score > STRATEGY_LIMITS.opportunityMaxScore) reasons.push("Score valt buiten de OPPORTUNITY-band");
   if ((gradeRank[signal?.tradeQuality] || 0) < gradeRank["A-"]) reasons.push("Trade Quality is lager dan A-");
   if (Number(signal?.confidence) < STRATEGY_LIMITS.opportunityMinConfidence) reasons.push("Confidence is lager dan 75");
   if (Number(signal?.setupConfidence) < STRATEGY_LIMITS.opportunityMinSetupConfidence) reasons.push("Setup Confidence is lager dan 80");
@@ -68,23 +68,28 @@ function opportunityGate(signal, { symbol, btcSignal, currentPrice, relativeStre
   if (!finite(signal?.spreadPct) || Number(signal.spreadPct) > SIGNAL_LIMITS.actionableSpreadPct) reasons.push("Spread is te hoog of ongeldig");
   if (signal?.adverseFunding === true) reasons.push("Funding is ongunstig voor deze richting");
   if (signal?.adversePremium === true) reasons.push("Premium is ongunstig voor deze richting");
-  if (signal?.higherTimeframeConfirmed !== true) reasons.push("4u-bevestiging ontbreekt");
+
+  const momentumEligible = momentumAcceptance?.eligible === true;
+  const fourHourBias = signal?.timeframeBias?.["240"];
+  const fourHourOpposes = ["LONG", "SHORT"].includes(fourHourBias) && fourHourBias !== direction;
+  if (signal?.higherTimeframeConfirmed !== true && !momentumEligible) reasons.push("4u-bevestiging ontbreekt");
+  if (momentumEligible && fourHourOpposes) reasons.push("4u-trend spreekt Momentum Acceptance tegen");
   if (signal?.dailyOpposes === true) reasons.push("1d-trend spreekt de setup sterk tegen");
   const btcOpposingPrime = !isCoreSymbol(symbol) && hasOpposingBtcPrime({ ...signal, bias: direction }, btcSignal);
   if (btcOpposingPrime) reasons.push("Tegengestelde BTC 85+ PRIME setup is actief");
 
   const triggerSource = relativeStrength?.eligible
     ? "RELATIVE_STRENGTH_CONTINUATION"
-    : momentumAcceptance?.eligible
+    : momentumEligible
       ? "MOMENTUM_ACCEPTANCE"
       : "CLASSIC";
   const basePlan = relativeStrength?.eligible
     ? relativeStrength.plan
-    : momentumAcceptance?.eligible
+    : momentumEligible
       ? momentumAcceptance.plan
       : signal?.plan;
   if (!basePlan?.confirmed) reasons.push(basePlan?.waitFor || "Technische trigger is niet bevestigd");
-  if (Number(basePlan?.rr2) < STRATEGY_LIMITS.opportunityMinRR2) reasons.push("R/R naar T2 is lager dan 2,5");
+  if (Number(basePlan?.rr2) < STRATEGY_LIMITS.opportunityMinRR2) reasons.push(`R/R naar T2 is lager dan ${STRATEGY_LIMITS.opportunityMinRR2}`);
   const chase = evaluateChase({ direction, currentPrice, plan: basePlan });
   if (chase.blocked) reasons.push(...chase.reasons);
 
@@ -136,7 +141,7 @@ export function classifySignal(signal, {
       eligible: true,
       alertEligible: true,
       status: "ACTIVE",
-      reasons: ["Score is lager dan de PRIME-drempel van 85"],
+      reasons: ["PRIME-gate niet volledig gehaald; OPPORTUNITY-filters wel groen"],
       gateReasons: prime.reasons,
       plan: opportunity.plan,
       direction: opportunity.direction,
